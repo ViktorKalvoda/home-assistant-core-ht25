@@ -29,6 +29,8 @@ from homeassistant.components.media_player import (
     MediaPlayerState,
     MediaType,
     RepeatMode,
+    # SearchMedia,
+    # SearchMediaQuery,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -53,6 +55,7 @@ SUPPORT_SPOTIFY = (
     | MediaPlayerEntityFeature.SELECT_SOURCE
     | MediaPlayerEntityFeature.SHUFFLE_SET
     | MediaPlayerEntityFeature.VOLUME_SET
+    | MediaPlayerEntityFeature.SEARCH_MEDIA
 )
 
 REPEAT_MODE_MAPPING_TO_HA = {
@@ -405,3 +408,17 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         self.async_on_remove(
             self.devices.async_add_listener(self._handle_devices_update)
         )
+
+    # pylint: disable=pointless-string-statement
+    """
+    Commented out as the implementation isn't complete at the moment.
+    async def async_search_media(self, query: SearchMediaQuery) -> SearchMedia:
+        Search for media with Spotipy library
+
+        results = await self.coordinator.client.search(query.search_query, limit=10)
+
+        return SearchMedia(result=)
+    """
+
+
+# pylint: enable=pointless-string-statement
