@@ -18,6 +18,7 @@ from spotifyaio import (
     RepeatMode as SpotifyRepeatMode,
     Track,
 )
+from spotifyaio.models import SearchType
 from yarl import URL
 
 from homeassistant.components.media_player import (
@@ -29,14 +30,14 @@ from homeassistant.components.media_player import (
     MediaPlayerState,
     MediaType,
     RepeatMode,
-    # SearchMedia,
-    # SearchMediaQuery,
+    SearchMedia,
+    SearchMediaQuery,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .browse_media import async_browse_media_internal
+from .browse_media import async_browse_media_internal, convert_to_browse_media
 from .const import MEDIA_PLAYER_PREFIX, PLAYABLE_MEDIA_TYPES
 from .coordinator import SpotifyConfigEntry, SpotifyCoordinator
 from .entity import SpotifyEntity
@@ -409,16 +410,46 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
             self.devices.async_add_listener(self._handle_devices_update)
         )
 
-    # pylint: disable=pointless-string-statement
-    """
-    Commented out as the implementation isn't complete at the moment.
     async def async_search_media(self, query: SearchMediaQuery) -> SearchMedia:
-        Search for media with Spotipy library
+        """Search for media with Spotifyaio library."""
 
-        results = await self.coordinator.client.search(query.search_query, limit=10)
+        try:
+            search_query = query.search_query
+            limit = 5
+            media_types: list[SearchType] = [
+                SearchType.ALBUM,
+                SearchType.ARTIST,
+                SearchType.AUDIOBOOK,
+                SearchType.EPISODE,
+                SearchType.PLAYLIST,
+                SearchType.SHOW,
+                SearchType.TRACK,
+            ]
+            if query.media_content_type:
+                _LOGGER.debug(
+                    "Searching for %s in %s", search_query, query.media_content_type
+                )
 
-        return SearchMedia(result=)
-    """
+            search_results = await self.coordinator.client.search(
+                search_query,
+                types=media_types,
+                limit=limit,
+            )
+            processed_results = self._process_search_result(search_results)
+            return SearchMedia(result=processed_results)
 
+        except Exception:
+            _LOGGER.exception("Search error details for %s", query.search_query)
+        return SearchMedia(result=[])
 
-# pylint: enable=pointless-string-statement
+    def _process_search_result(self, search_result: Any) -> list[BrowseMedia]:
+        """Process a Sptofiaio SearchResult into a list of BrowseMedia."""
+        processed_items: list[BrowseMedia] = []
+        for item_list in search_result.values():
+            for item in item_list:
+                try:
+                    converted_item = convert_to_browse_media(item)
+                    processed_items.append(converted_item)
+                except KeyError:
+                    _LOGGER.debug("Unsupported item type: %s", type(item))
+        return processed_items
