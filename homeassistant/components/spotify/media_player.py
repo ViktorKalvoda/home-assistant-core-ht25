@@ -418,11 +418,11 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
             limit = 5
             media_types: list[SearchType] = [
                 SearchType.ALBUM,
-                SearchType.ARTIST,
-                SearchType.AUDIOBOOK,
+                # SearchType.ARTIST,
+                # SearchType.AUDIOBOOK,
                 SearchType.EPISODE,
                 SearchType.PLAYLIST,
-                SearchType.SHOW,
+                # SearchType.SHOW,
                 SearchType.TRACK,
             ]
             if query.media_content_type:
@@ -445,7 +445,15 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
     def _process_search_result(self, search_result: Any) -> list[BrowseMedia]:
         """Process a Sptofiaio SearchResult into a list of BrowseMedia."""
         processed_items: list[BrowseMedia] = []
-        for item_list in search_result.values():
+        for item_list in (
+            search_result.albums,
+            search_result.artists,
+            search_result.audiobooks,
+            search_result.episodes,
+            search_result.playlists,
+            search_result.shows,
+            search_result.tracks,
+        ):
             for item in item_list:
                 try:
                     converted_item = convert_to_browse_media(item)
