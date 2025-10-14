@@ -7,6 +7,7 @@ import logging
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from spotifyaio import (
+    Album,
     Artist,
     BasePlaylist,
     SimplifiedAlbum,
@@ -491,3 +492,55 @@ async def library_payload(*, can_play_artist: bool) -> BrowseMedia:
             )
         )
     return browse_media
+
+
+def convert_to_browse_media(
+    item: Any,
+) -> BrowseMedia:
+    """Convert a Spotify item to a BrowseMedia object."""
+    payload: ItemPayload
+    match item:
+        case BasePlaylist():
+            payload = _get_playlist_item_payload(item)
+        case SimplifiedAlbum() | Album():
+            payload = _get_album_item_payload(item)
+        case Artist():
+            payload = _get_artist_item_payload(item)
+        case SimplifiedEpisode() | Episode():
+            payload = _get_episode_item_payload(item)
+        case SimplifiedTrack() | Track():
+            payload = _get_track_item_payload(item)
+        case _:
+            raise UnknownMediaType(f"Unsupported item type: {type(item)}")
+
+    if artists := getattr(item, "artists", None):
+        title = f"{artists[0].name} - {payload['name']}"
+    else:
+        title = payload["name"]
+
+    can_expand = payload["type"] not in [
+        MediaType.TRACK,
+        MediaType.EPISODE,
+    ]
+
+    media_class: MediaClass
+    try:
+        media_class = CONTENT_TYPE_MEDIA_CLASS[payload["type"]]["parent"]
+    except KeyError as err:
+        _LOGGER.debug("Unknown media type received: %s", payload["type"])
+        raise UnknownMediaType(f"Unknown media type: {payload['type']}") from err
+
+    can_play_artist = True
+    can_play = payload["type"] in PLAYABLE_MEDIA_TYPES and (
+        payload["type"] != MediaType.ARTIST or can_play_artist
+    )
+
+    return BrowseMedia(
+        media_class=media_class,
+        media_content_id=payload["uri"],
+        media_content_type=payload["type"],
+        title=title,
+        can_play=can_play,
+        can_expand=can_expand,
+        thumbnail=payload["thumbnail"],
+    )
