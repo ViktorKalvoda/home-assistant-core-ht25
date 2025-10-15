@@ -144,6 +144,16 @@ def _get_simplified_artist_payload(item: SimplifiedArtist) -> ItemPayload:
     }
 
 
+def _get_browseMedia_item_payload(item: BrowseMedia) -> ItemPayload:
+    return {
+        "id": item.media_content_id,
+        "name": item.title,
+        "type": item.media_content_type,
+        "uri": item.media_content_id,
+        "thumbnail": None,  # SimplifiedArtist does not have images
+    }
+
+
 class BrowsableMedia(StrEnum):
     """Enum of browsable media."""
 
@@ -156,6 +166,7 @@ class BrowsableMedia(StrEnum):
     CURRENT_USER_TOP_ARTISTS = "current_user_top_artists"
     CURRENT_USER_TOP_TRACKS = "current_user_top_tracks"
     NEW_RELEASES = "new_releases"
+    SEARCH_RESULTS = "search_results"
 
 
 LIBRARY_MAP = {
@@ -168,6 +179,7 @@ LIBRARY_MAP = {
     BrowsableMedia.CURRENT_USER_TOP_ARTISTS.value: "Top Artists",
     BrowsableMedia.CURRENT_USER_TOP_TRACKS.value: "Top Tracks",
     BrowsableMedia.NEW_RELEASES.value: "New Releases",
+    BrowsableMedia.SEARCH_RESULTS.value: "Search Results",
 }
 
 CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
@@ -206,6 +218,10 @@ CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
     BrowsableMedia.NEW_RELEASES.value: {
         "parent": MediaClass.DIRECTORY,
         "children": MediaClass.ALBUM,
+    },
+    BrowsableMedia.SEARCH_RESULTS.value: {
+        "parent": MediaClass.DIRECTORY,
+        "children": MediaClass.DIRECTORY,
     },
     MediaType.PLAYLIST: {
         "parent": MediaClass.PLAYLIST,
@@ -329,6 +345,7 @@ async def async_browse_media_internal(
         "media_content_id": media_content_id,
     }
     response = await build_item_response(
+        hass,
         spotify,
         payload,
         can_play_artist=can_play_artist,
@@ -339,6 +356,7 @@ async def async_browse_media_internal(
 
 
 async def build_item_response(  # noqa: C901
+    hass: HomeAssistant,
     spotify: SpotifyClient,
     payload: dict[str, str | None],
     *,
@@ -399,6 +417,10 @@ async def build_item_response(  # noqa: C901
     elif media_content_type == BrowsableMedia.NEW_RELEASES:
         if new_releases := await spotify.get_new_releases():
             items = [_get_album_item_payload(album) for album in new_releases]
+    elif media_content_type == BrowsableMedia.SEARCH_RESULTS:
+        if search_results := hass.data.get("spotify_search_result"):
+            for result in search_results:
+                items.append(_get_browseMedia_item_payload(result))
     elif media_content_type == MediaType.PLAYLIST:
         if playlist := await spotify.get_playlist(media_content_id):
             title = playlist.name
