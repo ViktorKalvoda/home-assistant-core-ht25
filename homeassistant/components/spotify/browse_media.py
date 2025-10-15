@@ -26,7 +26,13 @@ from homeassistant.components.media_player import (
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, MEDIA_PLAYER_PREFIX, MEDIA_TYPE_SHOW, PLAYABLE_MEDIA_TYPES
+from .const import (
+    DOMAIN,
+    MEDIA_PLAYER_PREFIX,
+    MEDIA_TYPE_AUDIOBOOK,
+    MEDIA_TYPE_SHOW,
+    PLAYABLE_MEDIA_TYPES,
+)
 from .util import fetch_image_url
 
 BROWSE_LIMIT = 48
@@ -101,6 +107,16 @@ def _get_episode_item_payload(episode: SimplifiedEpisode) -> ItemPayload:
     }
 
 
+def _get_chapter_item_payload(chapter: Any) -> ItemPayload:
+    return {
+        "id": chapter.chapter_id,
+        "name": chapter.name,
+        "type": MediaType.TRACK,
+        "uri": chapter.uri,
+        "thumbnail": fetch_image_url(chapter.images),
+    }
+
+
 class BrowsableMedia(StrEnum):
     """Enum of browsable media."""
 
@@ -132,7 +148,7 @@ LIBRARY_MAP = {
 CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
     BrowsableMedia.CURRENT_USER_SAVED_AUDIOBOOKS.value: {
         "parent": MediaClass.DIRECTORY,
-        "children": MediaClass.TRACK,  # Use TRACK for testing
+        "children": MediaClass.PLAYLIST,  # Use TRACK for testing
     },
     BrowsableMedia.CURRENT_USER_PLAYLISTS.value: {
         "parent": MediaClass.DIRECTORY,
@@ -179,6 +195,7 @@ CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
     MediaType.EPISODE: {"parent": MediaClass.EPISODE, "children": None},
     MEDIA_TYPE_SHOW: {"parent": MediaClass.PODCAST, "children": MediaClass.EPISODE},
     MediaType.TRACK: {"parent": MediaClass.TRACK, "children": None},
+    MEDIA_TYPE_AUDIOBOOK: {"parent": MediaClass.PLAYLIST, "children": MediaClass.TRACK},
 }
 
 
@@ -317,16 +334,12 @@ async def build_item_response(  # noqa: C901
         if audiobooks := await spotify.get_saved_audiobooks():
             items = []
             for audiobook in audiobooks:
-                chapters = await spotify.get_audiobook_chapters(audiobook.audiobook_id)
-                if not chapters:
-                    continue
-                first_chapter = chapters[0]
                 items.append(
                     {
                         "id": audiobook.audiobook_id,
                         "name": audiobook.name,
-                        "type": MediaType.TRACK,  # Use TRACK for testing
-                        "uri": first_chapter.uri,
+                        "type": MEDIA_TYPE_AUDIOBOOK,  # Use TRACK for testing
+                        "uri": audiobook.uri,
                         "thumbnail": fetch_image_url(audiobook.images),
                     }
                 )
@@ -409,6 +422,13 @@ async def build_item_response(  # noqa: C901
             title = show.name
             image = show.images[0].url if show.images else None
             items = [_get_episode_item_payload(episode) for episode in show_episodes]
+    elif media_content_type == MEDIA_TYPE_AUDIOBOOK:
+        chapters = await spotify.get_audiobook_chapters(media_content_id)
+        audiobook = await spotify.get_audiobook(media_content_id)
+        if chapters and audiobook:
+            title = audiobook.name
+            image = audiobook.images[0].url if audiobook.images else None
+            items = [_get_chapter_item_payload(chapter) for chapter in chapters]
 
     try:
         media_class = CONTENT_TYPE_MEDIA_CLASS[media_content_type]
