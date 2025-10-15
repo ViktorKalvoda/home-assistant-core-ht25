@@ -412,17 +412,16 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
 
     async def async_search_media(self, query: SearchMediaQuery) -> SearchMedia:
         """Search for media with Spotifyaio library."""
-
         try:
             search_query = query.search_query
             limit = 5
             media_types: list[SearchType] = [
                 SearchType.ALBUM,
-                # SearchType.ARTIST,
-                # SearchType.AUDIOBOOK,
+                SearchType.ARTIST,
+                SearchType.AUDIOBOOK,
                 SearchType.EPISODE,
                 SearchType.PLAYLIST,
-                # SearchType.SHOW,
+                SearchType.SHOW,
                 SearchType.TRACK,
             ]
             if query.media_content_type:

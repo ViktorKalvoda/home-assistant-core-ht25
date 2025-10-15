@@ -7,15 +7,21 @@ import logging
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from spotifyaio import (
-    Album,
     Artist,
     BasePlaylist,
     SimplifiedAlbum,
+    SimplifiedArtist,
     SimplifiedTrack,
     SpotifyClient,
     Track,
 )
-from spotifyaio.models import Episode, ItemType, SimplifiedEpisode
+from spotifyaio.models import (
+    Episode,
+    ItemType,
+    SimplifiedAudiobook,
+    SimplifiedEpisode,
+    SimplifiedShow,
+)
 import yarl
 
 from homeassistant.components.media_player import (
@@ -27,7 +33,13 @@ from homeassistant.components.media_player import (
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, MEDIA_PLAYER_PREFIX, MEDIA_TYPE_SHOW, PLAYABLE_MEDIA_TYPES
+from .const import (
+    DOMAIN,
+    MEDIA_PLAYER_PREFIX,
+    MEDIA_TYPE_AUDIOBOOK,
+    MEDIA_TYPE_SHOW,
+    PLAYABLE_MEDIA_TYPES,
+)
 from .util import fetch_image_url
 
 BROWSE_LIMIT = 48
@@ -102,6 +114,36 @@ def _get_episode_item_payload(episode: SimplifiedEpisode) -> ItemPayload:
     }
 
 
+def _get_audiobook_item_payload(audiobook: SimplifiedAudiobook) -> ItemPayload:
+    return {
+        "id": audiobook.audiobook_id,
+        "name": audiobook.name,
+        "type": MEDIA_TYPE_AUDIOBOOK,
+        "uri": audiobook.uri,
+        "thumbnail": fetch_image_url(audiobook.images),
+    }
+
+
+def _get_show_item_payload(show: SimplifiedShow) -> ItemPayload:
+    return {
+        "id": show.show_id,
+        "name": show.name,
+        "type": MEDIA_TYPE_SHOW,
+        "uri": show.uri,
+        "thumbnail": fetch_image_url(show.images),
+    }
+
+
+def _get_simplified_artist_payload(item: SimplifiedArtist) -> ItemPayload:
+    return {
+        "id": item.artist_id,
+        "name": item.name,
+        "type": MediaType.ARTIST,
+        "uri": item.uri,
+        "thumbnail": None,  # SimplifiedArtist does not have images
+    }
+
+
 class BrowsableMedia(StrEnum):
     """Enum of browsable media."""
 
@@ -173,6 +215,10 @@ CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
     MediaType.ARTIST: {"parent": MediaClass.ARTIST, "children": MediaClass.ALBUM},
     MediaType.EPISODE: {"parent": MediaClass.EPISODE, "children": None},
     MEDIA_TYPE_SHOW: {"parent": MediaClass.PODCAST, "children": MediaClass.EPISODE},
+    MEDIA_TYPE_AUDIOBOOK: {
+        "parent": MediaClass.DIRECTORY,
+        "children": MediaClass.EPISODE,
+    },
     MediaType.TRACK: {"parent": MediaClass.TRACK, "children": None},
 }
 
@@ -502,14 +548,18 @@ def convert_to_browse_media(
     match item:
         case BasePlaylist():
             payload = _get_playlist_item_payload(item)
-        case SimplifiedAlbum() | Album():
+        case SimplifiedAlbum():
             payload = _get_album_item_payload(item)
-        case Artist():
-            payload = _get_artist_item_payload(item)
+        case SimplifiedAudiobook():
+            payload = _get_audiobook_item_payload(item)
+        case SimplifiedArtist():
+            payload = _get_simplified_artist_payload(item)
         case SimplifiedEpisode() | Episode():
             payload = _get_episode_item_payload(item)
         case SimplifiedTrack() | Track():
             payload = _get_track_item_payload(item)
+        case SimplifiedShow():
+            payload = _get_show_item_payload(item)
         case _:
             raise UnknownMediaType(f"Unsupported item type: {type(item)}")
 
