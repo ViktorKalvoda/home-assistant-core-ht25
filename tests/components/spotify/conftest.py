@@ -147,4 +147,8 @@ def mock_spotify() -> Generator[AsyncMock]:
         client.get_devices.return_value = Devices.from_json(
             load_fixture("devices.json", DOMAIN)
         ).devices
+
+        # Added mock for search support
+        client.search_media = AsyncMock(return_value=[])
+
         yield spotify_mock

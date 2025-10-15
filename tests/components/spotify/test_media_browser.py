@@ -175,3 +175,70 @@ async def test_browsing_not_loaded_entry(
             "spotify://artist",
             f"spotify://{mock_config_entry.entry_id}/spotify:artist:0TnOYISbd1XYRBk9myaseg",
         )
+
+
+# ---------------------- NEW SEARCH TESTS ADDED BELOW ----------------------
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_search_media_valid_query(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test valid search query returns filtered results."""
+    await setup_integration(hass, mock_config_entry)
+    mock_spotify.return_value.search_media.return_value = [
+        {"title": "Test Song", "media_content_id": "spotify:track:1234"}
+    ]
+
+    response = await async_browse_media(
+        hass,
+        "spotify://search",
+        f"spotify://{mock_config_entry.entry_id}/search",
+        search_query="Test",
+    )
+
+    assert response.as_dict() == snapshot
+    mock_spotify.return_value.search_media.assert_called_once_with("Test")
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_search_media_empty_query(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test empty search query returns no results."""
+    await setup_integration(hass, mock_config_entry)
+    mock_spotify.return_value.search_media.return_value = []
+
+    response = await async_browse_media(
+        hass,
+        "spotify://search",
+        f"spotify://{mock_config_entry.entry_id}/search",
+        search_query="",
+    )
+
+    assert response.children == []
+    mock_spotify.return_value.search_media.assert_not_called()
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_search_media_invalid_query(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test invalid or malformed search query is handled gracefully."""
+    await setup_integration(hass, mock_config_entry)
+    mock_spotify.return_value.search_media.side_effect = ValueError("Invalid input")
+
+    with pytest.raises(BrowseError, match="Invalid search input"):
+        await async_browse_media(
+            hass,
+            "spotify://search",
+            f"spotify://{mock_config_entry.entry_id}/search",
+            search_query="@@!!??",
+        )

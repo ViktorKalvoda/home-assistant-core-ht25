@@ -190,6 +190,7 @@ async def async_browse_media(
     media_content_id: str | None,
     *,
     can_play_artist: bool = True,
+    search_query: str | None = None,
 ) -> BrowseMedia:
     """Browse Spotify media."""
     parsed_url = None
@@ -244,6 +245,28 @@ async def async_browse_media(
         raise BrowseError("Invalid Spotify account specified")
     media_content_id = parsed_url.name
     info = entry.runtime_data
+
+    # Handle search query here (only after entry/runtime_data available)
+    spotify_client = info.coordinator.client
+    if search_query is not None:
+        if not search_query.strip():
+            # Empty query → return empty result
+            return BrowseMedia(title="Search results", children=[])
+
+        try:
+            results = await spotify_client.search_media(search_query)
+        except ValueError as err:
+            raise BrowseError("Invalid search input") from err
+
+        return BrowseMedia(
+            title=f"Search results for '{search_query}'",
+            media_class=MediaClass.DIRECTORY,
+            media_content_id=f"{MEDIA_PLAYER_PREFIX}search",
+            media_content_type="spotify_search",
+            can_play=False,
+            can_expand=True,
+            children=results,
+        )
 
     result = await async_browse_media_internal(
         hass,
