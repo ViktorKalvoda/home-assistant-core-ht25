@@ -1431,7 +1431,7 @@ async def test_todo_get_items_tool(hass: HomeAssistant) -> None:
     # Test that the status filter is passed correctly to the service call.
     # We don't assert on the response since it is fixed above.
     calls.clear()
-    result = await tool.async_call(
+    await tool.async_call(
         hass,
         llm.ToolInput(
             "todo_get_items",
@@ -1448,7 +1448,7 @@ async def test_todo_get_items_tool(hass: HomeAssistant) -> None:
     # Test that the status filter is passed correctly to the service call.
     # We don't assert on the response since it is fixed above.
     calls.clear()
-    result = await tool.async_call(
+    await tool.async_call(
         hass,
         llm.ToolInput(
             "todo_get_items",
