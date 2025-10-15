@@ -435,6 +435,7 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
                 limit=limit,
             )
             processed_results = self._process_search_result(search_results)
+            self.hass.data["spotify_search_result"] = processed_results
             return SearchMedia(result=processed_results)
 
         except Exception:
