@@ -425,6 +425,7 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
                 SearchType.TRACK,
             ]
             if query.media_content_type:
+                media_types = [getattr(SearchType, query.media_content_type.upper())]
                 _LOGGER.debug(
                     "Searching for %s in %s", search_query, query.media_content_type
                 )
