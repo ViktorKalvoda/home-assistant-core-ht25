@@ -803,7 +803,7 @@ async def test_async_search_media_success(
     mock_spotify: MagicMock,
     mock_config_entry,
 ) -> None:
-    """Search returns results processed to BrowseMedia, and calls spotify client correctly."""
+    """Test whether search returns results as BrowseMedia and calls spotify Client correctly."""
     await setup_integration(hass, mock_config_entry)
     player = SpotifyMediaPlayer(
         mock_config_entry.runtime_data.coordinator,
@@ -885,7 +885,7 @@ async def test_async_search_media_error_returns_empty(
     mock_spotify: MagicMock,
     mock_config_entry,
 ) -> None:
-    """If spotify search raises, the method returns an empty SearchMedia (error is logged)."""
+    """Test robustness of search media method."""
     await setup_integration(hass, mock_config_entry)
     player = SpotifyMediaPlayer(
         mock_config_entry.runtime_data.coordinator,
@@ -907,7 +907,7 @@ async def test__process_search_result_skips_unsupported_items(
     mock_spotify: MagicMock,
     mock_config_entry,
 ) -> None:
-    """Unsupported items (converter raises KeyError) are skipped."""
+    """Test whether search skips unsupported items and keeps order of supported ones."""
     await setup_integration(hass, mock_config_entry)
     player = SpotifyMediaPlayer(
         mock_config_entry.runtime_data.coordinator,
@@ -972,7 +972,7 @@ async def test_async_search_media_filtered_sets_types_limit_and_results(
     enum_name: str,
     bucket: str,
 ) -> None:
-    """When media_content_type is set, search uses the single matching type, limit=15, and returns only that bucket."""
+    """Test filtering capability of search and correct results."""
     await setup_integration(hass, mock_config_entry)
     player = SpotifyMediaPlayer(
         mock_config_entry.runtime_data.coordinator,
