@@ -851,8 +851,11 @@ async def test_async_search_media_success(
     assert args[0] == "rush"
     assert kwargs["types"] == [
         SearchType.ALBUM,
+        SearchType.ARTIST,
+        SearchType.AUDIOBOOK,
         SearchType.EPISODE,
         SearchType.PLAYLIST,
+        SearchType.SHOW,
         SearchType.TRACK,
     ]
     assert (
@@ -998,7 +1001,7 @@ async def test_async_search_media_filtered_sets_types_limit_and_results(
             media_class=MediaClass.DIRECTORY,
             media_content_id="uri",
             media_content_type="type",
-            can_play=False,
+            can_play=True,
             can_expand=False,
         )
 
