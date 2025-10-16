@@ -115,6 +115,34 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
     _attr_name = None
     _attr_translation_key = "spotify"
 
+    async def async_media_skip_forward(self) -> None:
+        """Skip forward 10 seconds in the current track."""
+        if not self.currently_playing or self.currently_playing.progress_ms is None:
+            return
+
+        new_position_ms = self.currently_playing.progress_ms + 10_000  # +10 seconds
+        duration_ms = (
+            self.currently_playing.item.duration_ms
+            if self.currently_playing.item
+            else None
+        )
+
+        # prevent going past track end
+        if duration_ms and new_position_ms > duration_ms:
+            new_position_ms = duration_ms - 1_000
+
+        await self._seek_and_refresh(new_position_ms)
+
+    async def async_media_skip_backward(self) -> None:
+        """Skip backward 10 seconds in the current track."""
+        if not self.currently_playing or self.currently_playing.progress_ms is None:
+            return
+
+        new_position_ms = self.currently_playing.progress_ms - 10_000  # -10 seconds
+        new_position_ms = max(new_position_ms, 0)
+
+        await self._seek_and_refresh(new_position_ms)
+
     def __init__(
         self,
         coordinator: SpotifyCoordinator,
@@ -124,10 +152,6 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         super().__init__(coordinator)
         self.devices = device_coordinator
         self._attr_unique_id = coordinator.current_user.user_id
-        # For smoother playback time control (debounced seek)
-        self._pending_seek: int | None = None
-        self._seek_lock = asyncio.Lock()
-        self._seek_task: asyncio.Task | None = None
 
     @property
     def currently_playing(self) -> PlaybackState | None:
@@ -311,43 +335,21 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         """Skip to next track."""
         await self.coordinator.client.next_track()
 
-    async def _seek_relative(self, seconds: int) -> None:
-        """Seek forward or backward by a relative number of seconds."""
-        if not self.currently_playing or self.currently_playing.progress_ms is None:
-            _LOGGER.debug("Cannot seek: no active playback")
+    async def _seek_and_refresh(self, position_ms: int) -> None:
+        """Perform the seek and refresh state to keep UI in sync."""
+        try:
+            await self.coordinator.client.seek_track(int(position_ms))
+        except (ValueError, RuntimeError) as e:
+            _LOGGER.warning("Seek command failed: %s", e)
             return
-
-        # current position in ms
-        current_ms = self.currently_playing.progress_ms
-        duration_ms = (
-            self.currently_playing.item.duration_ms
-            if self.currently_playing.item
-            else None
-        )
-
-        new_ms = current_ms + (seconds * 1000)
-
-        # Clamp within [0, duration]
-        if duration_ms is not None:
-            new_ms = max(0, min(new_ms, duration_ms - 1000))
-
-        _LOGGER.debug(
-            "Seeking relative by %ss (from %sms → %sms)", seconds, current_ms, new_ms
-        )
-
-        await self.coordinator.client.seek_track(int(new_ms))
-        await asyncio.sleep(AFTER_REQUEST_SLEEP)
+        # short delay before refresh to allow Spotify state update
+        await asyncio.sleep(0.5)
         await self.coordinator.async_refresh()
 
     @async_refresh_after
-    async def async_media_seek_forward_10(self) -> None:
-        """Seek forward 10 seconds."""
-        await self._seek_relative(10)
-
-    @async_refresh_after
-    async def async_media_seek_backward_10(self) -> None:
-        """Seek backward 10 seconds."""
-        await self._seek_relative(-10)
+    async def async_media_seek(self, position: float) -> None:
+        """Seek smoothly to a specific position (in seconds)."""
+        await self._seek_and_refresh(int(position * 1000))
 
     @async_refresh_after
     async def async_play_media(
