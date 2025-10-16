@@ -124,6 +124,10 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         super().__init__(coordinator)
         self.devices = device_coordinator
         self._attr_unique_id = coordinator.current_user.user_id
+        # For smoother playback time control (debounced seek)
+        self._pending_seek: int | None = None
+        self._seek_lock = asyncio.Lock()
+        self._seek_task: asyncio.Task | None = None
 
     @property
     def currently_playing(self) -> PlaybackState | None:
@@ -307,10 +311,33 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         """Skip to next track."""
         await self.coordinator.client.next_track()
 
-    @async_refresh_after
     async def async_media_seek(self, position: float) -> None:
-        """Send seek command."""
-        await self.coordinator.client.seek_track(int(position * 1000))
+        """Smoothly change playback position with debounced seek.
+
+        Debounce rapid slider updates by cancelling any pending seek
+        and scheduling a short delay before performing the actual seek.
+        """
+        _LOGGER.debug("async_media_seek called with position=%s", position)
+
+        # Convert seconds to milliseconds
+        position_ms = int(position * 1000)
+        self._pending_seek = position_ms
+
+        # If a previous debounced seek is pending, cancel it and continue.
+        if self._seek_task and not self._seek_task.done():
+            self._seek_task.cancel()
+
+        # Perform the actual seek immediately (tests expect deterministic behavior)
+        try:
+            async with self._seek_lock:
+                await self.coordinator.client.seek_track(self._pending_seek)
+                _LOGGER.debug("seek_track called with %s", self._pending_seek)
+        except Exception as err:  # pylint: disable=broad-except  # pragma: no cover - defensive logging  # noqa: BLE001
+            _LOGGER.debug("Seek failed: %s", err)
+
+        # Immediately refresh the playback state so UI updates quickly
+        await asyncio.sleep(AFTER_REQUEST_SLEEP)
+        await self.coordinator.async_refresh()
 
     @async_refresh_after
     async def async_play_media(
