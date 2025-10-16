@@ -311,33 +311,43 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         """Skip to next track."""
         await self.coordinator.client.next_track()
 
-    async def async_media_seek(self, position: float) -> None:
-        """Smoothly change playback position with debounced seek.
+    async def _seek_relative(self, seconds: int) -> None:
+        """Seek forward or backward by a relative number of seconds."""
+        if not self.currently_playing or self.currently_playing.progress_ms is None:
+            _LOGGER.debug("Cannot seek: no active playback")
+            return
 
-        Debounce rapid slider updates by cancelling any pending seek
-        and scheduling a short delay before performing the actual seek.
-        """
-        _LOGGER.debug("async_media_seek called with position=%s", position)
+        # current position in ms
+        current_ms = self.currently_playing.progress_ms
+        duration_ms = (
+            self.currently_playing.item.duration_ms
+            if self.currently_playing.item
+            else None
+        )
 
-        # Convert seconds to milliseconds
-        position_ms = int(position * 1000)
-        self._pending_seek = position_ms
+        new_ms = current_ms + (seconds * 1000)
 
-        # If a previous debounced seek is pending, cancel it and continue.
-        if self._seek_task and not self._seek_task.done():
-            self._seek_task.cancel()
+        # Clamp within [0, duration]
+        if duration_ms is not None:
+            new_ms = max(0, min(new_ms, duration_ms - 1000))
 
-        # Perform the actual seek immediately (tests expect deterministic behavior)
-        try:
-            async with self._seek_lock:
-                await self.coordinator.client.seek_track(self._pending_seek)
-                _LOGGER.debug("seek_track called with %s", self._pending_seek)
-        except Exception as err:  # pylint: disable=broad-except  # pragma: no cover - defensive logging  # noqa: BLE001
-            _LOGGER.debug("Seek failed: %s", err)
+        _LOGGER.debug(
+            "Seeking relative by %ss (from %sms → %sms)", seconds, current_ms, new_ms
+        )
 
-        # Immediately refresh the playback state so UI updates quickly
+        await self.coordinator.client.seek_track(int(new_ms))
         await asyncio.sleep(AFTER_REQUEST_SLEEP)
         await self.coordinator.async_refresh()
+
+    @async_refresh_after
+    async def async_media_seek_forward_10(self) -> None:
+        """Seek forward 10 seconds."""
+        await self._seek_relative(10)
+
+    @async_refresh_after
+    async def async_media_seek_backward_10(self) -> None:
+        """Seek backward 10 seconds."""
+        await self._seek_relative(-10)
 
     @async_refresh_after
     async def async_play_media(
