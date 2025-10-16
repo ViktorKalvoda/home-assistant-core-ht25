@@ -414,6 +414,8 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         """Search for media with Spotifyaio library."""
         try:
             search_query = query.search_query
+            _LOGGER.error("SEARCH QUERY IS %s", search_query)
+            _LOGGER.error("SEARCH TYPE IS %s", query.media_content_type)
             limit = 5
             media_types: list[SearchType] = [
                 SearchType.ALBUM,
@@ -426,6 +428,7 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
             ]
             if query.media_content_type:
                 media_types = [getattr(SearchType, query.media_content_type.upper())]
+                limit = 15
                 _LOGGER.debug(
                     "Searching for %s in %s", search_query, query.media_content_type
                 )
