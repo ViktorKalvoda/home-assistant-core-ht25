@@ -7,7 +7,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.media_player import BrowseError
 from homeassistant.components.spotify import DOMAIN
-from homeassistant.components.spotify.browse_media import async_browse_media, convert_to_browse_media, UNKNOW_MEDIA_TYPE
+from homeassistant.components.spotify.browse_media import UnknownMediaType, async_browse_media, convert_to_browse_media
 from homeassistant.const import CONF_ID
 from homeassistant.core import HomeAssistant
 
