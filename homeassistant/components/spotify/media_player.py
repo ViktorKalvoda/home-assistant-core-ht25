@@ -335,20 +335,14 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         """Skip to next track."""
         await self.coordinator.client.next_track()
 
+    @async_refresh_after
     async def _seek_and_refresh(self, position_ms: int) -> None:
         """Perform the seek and refresh state to keep UI in sync."""
-        try:
-            await self.coordinator.client.seek_track(int(position_ms))
-        except (ValueError, RuntimeError) as e:
-            _LOGGER.warning("Seek command failed: %s", e)
-            return
-        # short delay before refresh to allow Spotify state update
-        await asyncio.sleep(0.5)
-        await self.coordinator.async_refresh()
+        await self.coordinator.client.seek_track(int(position_ms))
 
     @async_refresh_after
     async def async_media_seek(self, position: float) -> None:
-        """Seek smoothly to a specific position (in seconds)."""
+        """Send seek command."""
         await self._seek_and_refresh(int(position * 1000))
 
     @async_refresh_after
