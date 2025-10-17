@@ -809,7 +809,7 @@ async def test_async_search_media_success(
         mock_config_entry.runtime_data.coordinator,
         mock_config_entry.runtime_data.devices,
     )
-    player._hass = hass
+    player.hass = hass
 
     album_obj = object()
     artist_obj = object()
@@ -982,7 +982,7 @@ async def test_async_search_media_filtered_sets_types_limit_and_results(
         mock_config_entry.runtime_data.coordinator,
         mock_config_entry.runtime_data.devices,
     )
-    player._hass = hass
+    player.hass = hass
 
     i1, i2 = object(), object()
     fake_result = types.SimpleNamespace(
