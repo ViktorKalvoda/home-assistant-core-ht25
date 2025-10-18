@@ -69,6 +69,9 @@ REPEAT_MODE_MAPPING_TO_SPOTIFY = {
 }
 AFTER_REQUEST_SLEEP = 1
 
+SERVICE_MEDIA_SKIP_FORWARD = "media_skip_forward"
+SERVICE_MEDIA_SKIP_BACKWARD = "media_skip_backward"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -78,6 +81,7 @@ async def async_setup_entry(
     """Set up Spotify based on a config entry."""
     data = entry.runtime_data
     assert entry.unique_id is not None
+
     spotify = SpotifyMediaPlayer(
         data.coordinator,
         data.devices,
@@ -89,7 +93,7 @@ async def async_setup_entry(
 
     platform.async_register_entity_service(
         "media_skip_forward",
-        {},  # no extra fields
+        {},  # no extra parameters
         "async_media_skip_forward",
     )
 
