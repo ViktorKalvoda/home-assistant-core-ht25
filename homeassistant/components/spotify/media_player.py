@@ -31,7 +31,10 @@ from homeassistant.components.media_player import (
     RepeatMode,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddConfigEntryEntitiesCallback,
+    async_get_current_platform,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .browse_media import async_browse_media_internal
@@ -81,6 +84,21 @@ async def async_setup_entry(
     )
     async_add_entities([spotify])
 
+    # Register custom skip services
+    platform = async_get_current_platform()
+
+    platform.async_register_entity_service(
+        "media_skip_forward",
+        {},  # no extra fields
+        "async_media_skip_forward",
+    )
+
+    platform.async_register_entity_service(
+        "media_skip_backward",
+        {},
+        "async_media_skip_backward",
+    )
+
 
 def ensure_item[_R](
     func: Callable[[SpotifyMediaPlayer, Item], _R],
@@ -114,34 +132,6 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
     _attr_media_image_remotely_accessible = False
     _attr_name = None
     _attr_translation_key = "spotify"
-
-    async def async_media_skip_forward(self) -> None:
-        """Skip forward 10 seconds in the current track."""
-        if not self.currently_playing or self.currently_playing.progress_ms is None:
-            return
-
-        new_position_ms = self.currently_playing.progress_ms + 10_000  # +10 seconds
-        duration_ms = (
-            self.currently_playing.item.duration_ms
-            if self.currently_playing.item
-            else None
-        )
-
-        # prevent going past track end
-        if duration_ms and new_position_ms > duration_ms:
-            new_position_ms = duration_ms - 1_000
-
-        await self._seek_and_refresh(new_position_ms)
-
-    async def async_media_skip_backward(self) -> None:
-        """Skip backward 10 seconds in the current track."""
-        if not self.currently_playing or self.currently_playing.progress_ms is None:
-            return
-
-        new_position_ms = self.currently_playing.progress_ms - 10_000  # -10 seconds
-        new_position_ms = max(new_position_ms, 0)
-
-        await self._seek_and_refresh(new_position_ms)
 
     def __init__(
         self,
@@ -336,14 +326,36 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         await self.coordinator.client.next_track()
 
     @async_refresh_after
-    async def _seek_and_refresh(self, position_ms: int) -> None:
-        """Perform the seek and refresh state to keep UI in sync."""
-        await self.coordinator.client.seek_track(int(position_ms))
-
-    @async_refresh_after
     async def async_media_seek(self, position: float) -> None:
         """Send seek command."""
-        await self._seek_and_refresh(int(position * 1000))
+        await self.coordinator.client.seek_track(int(position * 1000))
+
+    @async_refresh_after
+    async def async_media_skip_forward(self) -> None:
+        """Skip forward 10 seconds."""
+        if not self.currently_playing or self.currently_playing.progress_ms is None:
+            return
+
+        new_position_ms = self.currently_playing.progress_ms + 10_000
+        duration_ms = (
+            self.currently_playing.item.duration_ms
+            if self.currently_playing.item
+            else None
+        )
+
+        if duration_ms and new_position_ms > duration_ms:
+            new_position_ms = duration_ms - 1_000
+
+        await self.coordinator.client.seek_track(int(new_position_ms))
+
+    @async_refresh_after
+    async def async_media_skip_backward(self) -> None:
+        """Skip backward 10 seconds."""
+        if not self.currently_playing or self.currently_playing.progress_ms is None:
+            return
+
+        new_position_ms = max(self.currently_playing.progress_ms - 10_000, 0)
+        await self.coordinator.client.seek_track(int(new_position_ms))
 
     @async_refresh_after
     async def async_play_media(
