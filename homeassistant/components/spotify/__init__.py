@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import os
 from typing import TYPE_CHECKING
 
 import aiohttp
 from spotifyaio import Device, SpotifyClient, SpotifyConnectionError
 
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.const import CONF_ACCESS_TOKEN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
@@ -86,6 +88,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: SpotifyConfigEntry) -> b
 
     if not set(session.token["scope"].split(" ")).issuperset(SPOTIFY_SCOPES):
         raise ConfigEntryAuthFailed
+
+    current_dir_path = os.path.dirname(__file__)
+    static_dir_path = os.path.join(current_dir_path, "ui")
+
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                url_path="/spotify_ui",
+                path=static_dir_path,
+                cache_headers=False,
+            )
+        ]
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
