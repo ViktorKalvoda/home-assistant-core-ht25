@@ -72,7 +72,6 @@ class MediaPlayerState(
 class MediaClass(StrEnum):
     """Media class for media player entities."""
 
-    AUDIOBOOK = "audiobook"
     ALBUM = "album"
     APP = "app"
     ARTIST = "artist"
@@ -130,7 +129,6 @@ _DEPRECATED_MEDIA_CLASS_VIDEO = DeprecatedConstantEnum(MediaClass.VIDEO, "2025.1
 class MediaType(StrEnum):
     """Media type for media player entities."""
 
-    AUDIOBOOK = "audiobook"
     ALBUM = "album"
     APP = "app"
     APPS = "apps"

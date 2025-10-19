@@ -111,7 +111,7 @@ def _get_chapter_item_payload(chapter: Any) -> ItemPayload:
     return {
         "id": chapter.chapter_id,
         "name": chapter.name,
-        "type": MediaType.TRACK,
+        "type": MediaType.TRACK,  # Chapters are treated as tracks
         "uri": chapter.uri,
         "thumbnail": fetch_image_url(chapter.images),
     }
@@ -148,7 +148,7 @@ LIBRARY_MAP = {
 CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
     BrowsableMedia.CURRENT_USER_SAVED_AUDIOBOOKS.value: {
         "parent": MediaClass.DIRECTORY,
-        "children": MediaClass.PLAYLIST,  # Use TRACK for testing
+        "children": MediaClass.PLAYLIST,  # Audiobooks treated as playlists of chapters
     },
     BrowsableMedia.CURRENT_USER_PLAYLISTS.value: {
         "parent": MediaClass.DIRECTORY,
@@ -338,7 +338,7 @@ async def build_item_response(  # noqa: C901
                     {
                         "id": audiobook.audiobook_id,
                         "name": audiobook.name,
-                        "type": MEDIA_TYPE_AUDIOBOOK,  # Use TRACK for testing
+                        "type": MEDIA_TYPE_AUDIOBOOK,
                         "uri": audiobook.uri,
                         "thumbnail": fetch_image_url(audiobook.images),
                     }

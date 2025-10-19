@@ -333,7 +333,6 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
             MediaType.TRACK,
             MediaType.EPISODE,
             MediaType.MUSIC,
-            MediaType.AUDIOBOOK,
         }:
             kwargs["uris"] = [media_id]
         elif media_type in PLAYABLE_MEDIA_TYPES:
@@ -350,7 +349,6 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
                 MediaType.TRACK,
                 MediaType.EPISODE,
                 MediaType.MUSIC,
-                MediaType.AUDIOBOOK,
             }:
                 raise ValueError(
                     f"Media type {media_type} is not supported when enqueue is ADD"
