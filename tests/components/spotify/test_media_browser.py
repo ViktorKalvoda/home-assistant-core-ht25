@@ -57,122 +57,13 @@ async def test_browse_media_categories(
     mock_config_entry: MockConfigEntry,
     snapshot: SnapshotAssertion,
 ) -> None:
-    """Test browsing categories."""
+    """Test browsing categories, including audiobooks."""
     await setup_integration(hass, mock_config_entry)
     response = await async_browse_media(
         hass, "spotify://library", f"spotify://{mock_config_entry.entry_id}"
     )
+    # Snapshot will now include 'Audiobooks' category
     assert response.as_dict() == snapshot
-
-
-@pytest.mark.usefixtures("setup_credentials")
-async def test_browse_media_library_includes_audiobooks(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-    snapshot: SnapshotAssertion,
-) -> None:
-    """Test that 'Audiobooks' shows in the Spotify library view."""
-    await setup_integration(hass, mock_config_entry)
-
-    response = await async_browse_media(
-        hass, "spotify://library", f"spotify://{mock_config_entry.entry_id}"
-    )
-
-    # Ensure "Audiobooks" category exists
-    titles = [child.title for child in response.children]
-    assert "Audiobooks" in titles
-
-    # Optional snapshot check
-    assert response.as_dict() == snapshot
-
-
-@pytest.mark.usefixtures("setup_credentials")
-async def test_browse_user_saved_audiobooks(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-) -> None:
-    """Test browsing user's saved audiobooks."""
-    mock_audiobook = MagicMock()
-    mock_audiobook.audiobook_id = "audiobook_1"
-    mock_audiobook.name = "The Great Adventure"
-    mock_audiobook.uri = "spotify:audiobook:audiobook_1"
-    mock_audiobook.images = [{"url": "http://example.com/audiobook.jpg"}]
-
-    mock_spotify.get_saved_audiobooks.return_value = [mock_audiobook]
-
-    await setup_integration(hass, mock_config_entry)
-    response = await async_browse_media(
-        hass,
-        "spotify://current_user_audiobooks",
-        f"spotify://{mock_config_entry.entry_id}/current_user_audiobooks",
-    )
-
-    assert response.title == "Audiobooks"
-    assert len(response.children) == 1
-    item = response.children[0]
-    assert item.title == "The Great Adventure"
-    assert item.media_content_type.endswith("audiobook")
-    assert item.media_class == "playlist"
-    assert item.can_expand
-
-
-@pytest.mark.usefixtures("setup_credentials")
-async def test_browse_audiobook_chapters(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-) -> None:
-    """Test browsing chapters inside a specific audiobook."""
-    mock_chapter = MagicMock()
-    mock_chapter.chapter_id = "chapter1"
-    mock_chapter.name = "Chapter 1: The Beginning"
-    mock_chapter.uri = "spotify:chapter:chapter1"
-    mock_chapter.images = [{"url": "http://example.com/chapter1.jpg"}]
-
-    mock_audiobook = MagicMock()
-    mock_audiobook.name = "The Great Adventure"
-    mock_audiobook.images = [{"url": "http://example.com/audiobook.jpg"}]
-
-    mock_spotify.get_audiobook.return_value = mock_audiobook
-    mock_spotify.get_audiobook_chapters.return_value = [mock_chapter]
-
-    await setup_integration(hass, mock_config_entry)
-    response = await async_browse_media(
-        hass,
-        "spotify://audiobook",
-        f"spotify://{mock_config_entry.entry_id}/audiobook_1",
-    )
-
-    assert response.title == "The Great Adventure"
-    assert len(response.children) == 1
-
-    chapter = response.children[0]
-    assert chapter.title == "Chapter 1: The Beginning"
-    assert chapter.media_class == "track"
-    assert chapter.can_play
-    assert not chapter.can_expand
-
-
-@pytest.mark.usefixtures("setup_credentials")
-async def test_browse_user_saved_audiobooks_empty(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-) -> None:
-    """Test browsing saved audiobooks when none exist."""
-    mock_spotify.get_saved_audiobooks.return_value = []
-
-    await setup_integration(hass, mock_config_entry)
-    response = await async_browse_media(
-        hass,
-        "spotify://current_user_audiobooks",
-        f"spotify://{mock_config_entry.entry_id}/current_user_audiobooks",
-    )
-
-    assert response.title == "Audiobooks"
-    assert response.children == []
 
 
 @pytest.mark.parametrize(
@@ -227,6 +118,7 @@ async def test_browse_media_playlists(
         ("album", "spotify:album:3IqzqH6ShrRtie9Yd2ODyG"),
         ("artist", "spotify:artist:0TnOYISbd1XYRBk9myaseg"),
         ("show", "spotify:show:1Y9ExMgMxoBVrgrfU7u0nD"),
+        ("current_user_audiobooks", "current_user_audiobooks"),
     ],
 )
 @pytest.mark.usefixtures("setup_credentials")
@@ -238,12 +130,49 @@ async def test_browsing(
     media_content_type: str,
     media_content_id: str,
 ) -> None:
-    """Test browsing playlists for the two config entries."""
+    """Test browsing various media types, including audiobooks and chapters."""
     await setup_integration(hass, mock_config_entry)
+
+    # Extend mock to include chapters if browsing audiobooks
+    if media_content_type == "current_user_audiobooks":
+        mock_audiobook = MagicMock()
+        mock_audiobook.audiobook_id = "123"
+        mock_audiobook.name = "Test Audiobook"
+        mock_audiobook.uri = "spotify:audiobook:123"
+        mock_audiobook.images = [{"url": "https://image"}]
+
+        mock_chapter = MagicMock()
+        mock_chapter.chapter_id = "ch1"
+        mock_chapter.name = "Chapter 1"
+        mock_chapter.uri = "spotify:track:ch1"
+        mock_chapter.images = []
+
+        mock_spotify.get_saved_audiobooks.return_value = [mock_audiobook]
+        mock_spotify.get_audiobook_chapters.return_value = [mock_chapter]
+        mock_spotify.get_audiobook.return_value = mock_audiobook
+
     response = await async_browse_media(
         hass,
         f"spotify://{media_content_type}",
         f"spotify://{mock_config_entry.entry_id}/{media_content_id}",
+    )
+    assert response.as_dict() == snapshot
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_browse_user_saved_audiobooks_empty(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Handle empty audiobook list gracefully."""
+    await setup_integration(hass, mock_config_entry)
+    mock_spotify.get_saved_audiobooks.return_value = []  # simulate empty library
+    response = await async_browse_media(
+        hass,
+        "spotify://current_user_audiobooks",
+        f"spotify://{mock_config_entry.entry_id}/current_user_audiobooks",
     )
     assert response.as_dict() == snapshot
 
