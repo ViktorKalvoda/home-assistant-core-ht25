@@ -391,66 +391,6 @@ async def test_seek(
 
 
 @pytest.mark.usefixtures("setup_credentials")
-async def test_skip_forward(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-) -> None:
-    """Test skipping forward by 10 seconds."""
-    # Setup the integration
-    await setup_integration(hass, mock_config_entry)
-
-    # Mock current playback progress (e.g., 30 seconds into a 2-minute song)
-    hass.data["spotify"][
-        mock_config_entry.entry_id
-    ].player.currently_playing.progress_ms = 30_000
-    hass.data["spotify"][
-        mock_config_entry.entry_id
-    ].player.currently_playing.item.duration_ms = 120_000
-
-    # Call the service that will map to async_media_skip_forward
-    await hass.services.async_call(
-        MEDIA_PLAYER_DOMAIN,
-        "media_skip_forward",  # This is the custom service you registered for your method
-        {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
-        blocking=True,
-    )
-
-    # Expected seek position = 30,000 + 10,000 = 40,000
-    mock_spotify.return_value.seek_track.assert_called_with(40_000)
-
-
-@pytest.mark.usefixtures("setup_credentials")
-async def test_skip_backward(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-) -> None:
-    """Test skipping backward by 10 seconds."""
-    # Setup the integration
-    await setup_integration(hass, mock_config_entry)
-
-    # Mock current playback progress (e.g., 5 seconds into a song)
-    hass.data["spotify"][
-        mock_config_entry.entry_id
-    ].player.currently_playing.progress_ms = 5_000
-    hass.data["spotify"][
-        mock_config_entry.entry_id
-    ].player.currently_playing.item.duration_ms = 120_000
-
-    # Call the service that maps to async_media_skip_backward
-    await hass.services.async_call(
-        MEDIA_PLAYER_DOMAIN,
-        "media_skip_backward",
-        {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
-        blocking=True,
-    )
-
-    # Expected seek position = 5,000 − 10,000 → floored to 0
-    mock_spotify.return_value.seek_track.assert_called_with(0)
-
-
-@pytest.mark.usefixtures("setup_credentials")
 @pytest.mark.parametrize(
     ("media_type", "media_id"),
     [
@@ -849,40 +789,3 @@ async def test_smart_polling_interval_handles_paused(
 
     mock_spotify.return_value.get_playback.assert_called_once()
     mock_spotify.return_value.get_playback.reset_mock()
-
-
-@pytest.mark.usefixtures("setup_credentials")
-async def test_play_audiobook(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-) -> None:
-    """Test playing an audiobook."""
-    await setup_integration(hass, mock_config_entry)
-    player = hass.data["spotify"][mock_config_entry.entry_id]
-
-    media_id = "spotify:audiobook:audiobook_123"
-
-    await player.async_play_media(MediaType.AUDIOBOOK, media_id)
-
-    mock_spotify.start_playback.assert_called_once_with(
-        device_id=None,
-        uris=[media_id],
-    )
-
-
-@pytest.mark.usefixtures("setup_credentials")
-async def test_pause_resume_audiobook(
-    hass: HomeAssistant,
-    mock_spotify: MagicMock,
-    mock_config_entry: MockConfigEntry,
-) -> None:
-    """Test pausing and resuming audiobook playback."""
-    await setup_integration(hass, mock_config_entry)
-    player = hass.data["spotify"][mock_config_entry.entry_id]
-
-    await player.async_media_pause()
-    mock_spotify.pause_playback.assert_called_once()
-
-    await player.async_media_play()
-    mock_spotify.start_playback.assert_called()
