@@ -79,13 +79,13 @@ class SpotifySearchCard extends HTMLElement {
         return_response: true,
       });
 
-      this._handleNavigate(config.entity);
+      this._open_results(config.entity);
     } catch (error) {
       alert(`Error: ${error.message}`);
     }
   }
 
-  _handleNavigate(entityId) {
+  _open_results(entityId) {
     const path = `/media-browser/${entityId}/spotify%3A%2F%2Fsearch_results%2Csearch_results`;
     window.history.pushState(null, "", path);
     window.dispatchEvent(new Event("location-changed"));

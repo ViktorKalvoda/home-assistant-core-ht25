@@ -414,19 +414,19 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         """Search for media with Spotifyaio library."""
         try:
             search_query = query.search_query
-            limit = 5
-            media_types: list[SearchType] = [
-                SearchType.ALBUM,
-                SearchType.ARTIST,
-                SearchType.AUDIOBOOK,
-                SearchType.EPISODE,
-                SearchType.PLAYLIST,
-                SearchType.SHOW,
-                SearchType.TRACK,
-            ]
+            _LOGGER.debug(
+                "Searching for %s in %s", search_query, query.media_content_type
+            )
+            limit = 15
+            media_types: list[SearchType]
             if query.media_content_type:
-                media_types = [getattr(SearchType, query.media_content_type.upper())]
-                limit = 15
+                media_content_types = query.media_content_type.upper().split(",")
+                media_types = [
+                    getattr(SearchType, media_type.strip())
+                    for media_type in media_content_types
+                ]
+                if len(media_types) > 1:
+                    limit = 5
             search_results = await self.coordinator.client.search(
                 search_query,
                 types=media_types,
