@@ -685,7 +685,7 @@ async def test_skip_forward(
     mock_config_entry: MockConfigEntry,
 ) -> None:
     """Test skipping forward by 10 seconds."""
-    mock_spotify.return_value.get_playback.return_value.progress_ms = 50_000  # 50s
+    mock_spotify.return_value.get_playback.return_value.progress_ms = 50_000
     mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
     await setup_integration(hass, mock_config_entry)
     await hass.async_block_till_done()

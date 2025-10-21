@@ -337,29 +337,20 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
     @async_refresh_after
     async def async_media_skip_forward(self) -> None:
         """Skip forward 10 seconds."""
-        if not self.currently_playing or self.currently_playing.progress_ms is None:
+        if self.media_position is None or self.media_duration is None:
             return
 
-        new_position_ms = self.currently_playing.progress_ms + 10_000
-        duration_ms = (
-            self.currently_playing.item.duration_ms
-            if self.currently_playing.item
-            else None
-        )
-
-        if duration_ms and new_position_ms > duration_ms:
-            new_position_ms = duration_ms - 1_000
-
-        await self.coordinator.client.seek_track(int(new_position_ms))
+        new_position = min(self.media_position + 10, self.media_duration - 1)
+        await self.coordinator.client.seek_track(int(new_position * 1000))
 
     @async_refresh_after
     async def async_media_skip_backward(self) -> None:
         """Skip backward 10 seconds."""
-        if not self.currently_playing or self.currently_playing.progress_ms is None:
+        if self.media_position is None:
             return
 
-        new_position_ms = max(self.currently_playing.progress_ms - 10_000, 0)
-        await self.coordinator.client.seek_track(int(new_position_ms))
+        new_position = max(self.media_position - 10, 0)
+        await self.coordinator.client.seek_track(int(new_position * 1000))
 
     @async_refresh_after
     async def async_play_media(
