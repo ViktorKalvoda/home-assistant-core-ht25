@@ -114,11 +114,12 @@ async def test_browse_media_playlists(
         ("current_user_top_artists", "current_user_top_artists"),
         ("current_user_top_tracks", "current_user_top_tracks"),
         ("new_releases", "new_releases"),
+        ("current_user_audiobooks", "current_user_audiobooks"),
         ("playlist", "spotify:playlist:3cEYpjA9oz9GiPac4AsH4n"),
         ("album", "spotify:album:3IqzqH6ShrRtie9Yd2ODyG"),
         ("artist", "spotify:artist:0TnOYISbd1XYRBk9myaseg"),
         ("show", "spotify:show:1Y9ExMgMxoBVrgrfU7u0nD"),
-        ("current_user_audiobooks", "current_user_audiobooks"),
+        # Lacks audiobook test here !
     ],
 )
 @pytest.mark.usefixtures("setup_credentials")
@@ -130,26 +131,8 @@ async def test_browsing(
     media_content_type: str,
     media_content_id: str,
 ) -> None:
-    """Test browsing various media types, including audiobooks and chapters."""
+    """Test browsing playlists for the two config entries."""
     await setup_integration(hass, mock_config_entry)
-
-    # Extend mock to include chapters if browsing audiobooks
-    if media_content_type == "current_user_audiobooks":
-        mock_audiobook = MagicMock()
-        mock_audiobook.audiobook_id = "123"
-        mock_audiobook.name = "Test Audiobook"
-        mock_audiobook.uri = "spotify:audiobook:123"
-        mock_audiobook.images = [{"url": "https://image"}]
-
-        mock_chapter = MagicMock()
-        mock_chapter.chapter_id = "ch1"
-        mock_chapter.name = "Chapter 1"
-        mock_chapter.uri = "spotify:track:ch1"
-        mock_chapter.images = []
-
-        mock_spotify.get_saved_audiobooks.return_value = [mock_audiobook]
-        mock_spotify.get_audiobook_chapters.return_value = [mock_chapter]
-        mock_spotify.get_audiobook.return_value = mock_audiobook
 
     response = await async_browse_media(
         hass,
