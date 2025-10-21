@@ -31,10 +31,7 @@ from homeassistant.components.media_player import (
     RepeatMode,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import (
-    AddConfigEntryEntitiesCallback,
-    async_get_current_platform,
-)
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .browse_media import async_browse_media_internal
@@ -69,9 +66,6 @@ REPEAT_MODE_MAPPING_TO_SPOTIFY = {
 }
 AFTER_REQUEST_SLEEP = 1
 
-SERVICE_MEDIA_SKIP_FORWARD = "media_skip_forward"
-SERVICE_MEDIA_SKIP_BACKWARD = "media_skip_backward"
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -81,28 +75,11 @@ async def async_setup_entry(
     """Set up Spotify based on a config entry."""
     data = entry.runtime_data
     assert entry.unique_id is not None
-
     spotify = SpotifyMediaPlayer(
         data.coordinator,
         data.devices,
     )
     async_add_entities([spotify])
-
-    # Register custom skip services
-    platform = async_get_current_platform()
-
-    platform.async_register_entity_service(
-        "media_skip_forward",
-        {},  # no extra parameters
-        "async_media_skip_forward",
-    )
-
-    platform.async_register_entity_service(
-        "media_skip_backward",
-        {},
-        "async_media_skip_backward",
-    )
-
 
 def ensure_item[_R](
     func: Callable[[SpotifyMediaPlayer, Item], _R],
@@ -335,31 +312,22 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         await self.coordinator.client.seek_track(int(position * 1000))
 
     @async_refresh_after
-    async def async_media_skip_forward(self) -> None:
-        """Skip forward 10 seconds."""
-        if not self.currently_playing or self.currently_playing.progress_ms is None:
+    async def async_media_seek_forward(self) -> None:
+        """Seek forward 10 seconds."""
+        if self.media_position is None:
             return
-
-        new_position_ms = self.currently_playing.progress_ms + 10_000
-        duration_ms = (
-            self.currently_playing.item.duration_ms
-            if self.currently_playing.item
-            else None
+        target_position = min(
+            self.media_position + 10, self.media_duration or float("inf")
         )
-
-        if duration_ms and new_position_ms > duration_ms:
-            new_position_ms = duration_ms - 1_000
-
-        await self.coordinator.client.seek_track(int(new_position_ms))
+        await self.async_media_seek(float(target_position))
 
     @async_refresh_after
-    async def async_media_skip_backward(self) -> None:
-        """Skip backward 10 seconds."""
-        if not self.currently_playing or self.currently_playing.progress_ms is None:
+    async def async_media_seek_backward(self) -> None:
+        """Seek backward 10 seconds."""
+        if self.media_position is None:
             return
-
-        new_position_ms = max(self.currently_playing.progress_ms - 10_000, 0)
-        await self.coordinator.client.seek_track(int(new_position_ms))
+        target_position = max(self.media_position - 10, 0)
+        await self.async_media_seek(float(target_position))
 
     @async_refresh_after
     async def async_play_media(
@@ -378,7 +346,11 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         # Yet, they do generate those types of URI in their official clients.
         media_id = str(URL(media_id).with_query(None).with_fragment(None))
 
-        if media_type in {MediaType.TRACK, MediaType.EPISODE, MediaType.MUSIC}:
+        if media_type in {
+            MediaType.TRACK,
+            MediaType.EPISODE,
+            MediaType.MUSIC,
+        }:
             kwargs["uris"] = [media_id]
         elif media_type in PLAYABLE_MEDIA_TYPES:
             kwargs["context_uri"] = media_id
