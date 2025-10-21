@@ -34,6 +34,10 @@ from homeassistant.components.media_player import (
     RepeatMode,
 )
 from homeassistant.components.spotify import DOMAIN
+from homeassistant.components.spotify.media_player import (
+    SERVICE_MEDIA_SKIP_BACKWARD,
+    SERVICE_MEDIA_SKIP_FORWARD,
+)
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     ATTR_ENTITY_PICTURE,
@@ -672,6 +676,65 @@ async def test_normal_polling_interval(
     await hass.async_block_till_done()
 
     mock_spotify.return_value.get_playback.assert_called_once()
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_skip_forward(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test skipping forward by 10 seconds."""
+    # Arrange
+    mock_spotify.return_value.get_playback.return_value.progress_ms = 50_000  # 50s
+    mock_spotify.return_value.get_playback.return_value.item.duration_ms = (
+        120_000  # 120s
+    )
+    await setup_integration(hass, mock_config_entry)
+    # 🌟 NEW LINE: Ensure all service registration and async setup is complete
+    await hass.async_block_till_done()
+
+    # Act
+    media_player = hass.states.get("media_player.spotify_spotify_1")
+    assert media_player is not None
+
+    await hass.services.async_call(
+        "spotify",
+        SERVICE_MEDIA_SKIP_FORWARD,
+        {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
+        blocking=True,
+    )
+
+    # Assert
+    # Expected seek call at 60s (50s + 10s)
+    mock_spotify.return_value.seek_track.assert_called_with(60_000)
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_skip_backward(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test skipping backward by 10 seconds."""
+    # Arrange
+    mock_spotify.return_value.get_playback.return_value.progress_ms = 8_000  # 8s
+    mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
+    await setup_integration(hass, mock_config_entry)
+    # 🌟 NEW LINE: Ensure all service registration and async setup is complete
+    await hass.async_block_till_done()
+
+    # Act
+    await hass.services.async_call(
+        "spotify",
+        SERVICE_MEDIA_SKIP_BACKWARD,
+        {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
+        blocking=True,
+    )
+
+    # Assert
+    # Should clamp at 0 instead of negative
+    mock_spotify.return_value.seek_track.assert_called_with(0)
 
 
 @pytest.mark.usefixtures("setup_credentials")
