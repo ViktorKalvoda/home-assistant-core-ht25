@@ -373,9 +373,7 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         )
 
         kwargs = {}
-
-        # Spotify can't handle URI's with query strings or anchors
-        # Yet, they do generate those types of URI in their official clients.
+]
         media_id = str(URL(media_id).with_query(None).with_fragment(None))
 
         if media_type in {MediaType.TRACK, MediaType.EPISODE, MediaType.MUSIC}:
