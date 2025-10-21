@@ -844,7 +844,10 @@ async def test_async_search_media_success(
         "homeassistant.components.spotify.media_player.convert_to_browse_media",
         side_effect=_fake_convert,
     ) as convert_mock:
-        query = SearchMediaQuery(search_query="rush")
+        query = SearchMediaQuery(
+            search_query="rush",
+            media_content_type="ALBUM,ARTIST,AUDIOBOOK,EPISODE,PLAYLIST,SHOW,TRACK",
+        )
         result = await player.async_search_media(query)
 
     mock_spotify.return_value.search.assert_called_once()
@@ -897,9 +900,7 @@ async def test_async_search_media_error_returns_empty(
 
     query = SearchMediaQuery(search_query="anything")
     result = await player.async_search_media(query)
-    assert (
-        result.result == []
-    )
+    assert result.result == []
 
 
 @pytest.mark.usefixtures("setup_credentials")
@@ -942,14 +943,13 @@ async def test__process_search_result_skips_unsupported_items(
         "homeassistant.components.spotify.media_player.convert_to_browse_media",
         side_effect=_sometimes_convert,
     ):
-        processed = player._process_search_result(
-            fake_result
-        )
-    
+        processed = player._process_search_result(fake_result)
+
     assert [bm.title for bm in processed] == [
         f"OK:{id(ok1)}",
         f"OK:{id(ok2)}",
     ]
+
 
 @pytest.mark.usefixtures("setup_credentials")
 @pytest.mark.parametrize(
