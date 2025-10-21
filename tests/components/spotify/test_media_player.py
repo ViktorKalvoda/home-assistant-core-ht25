@@ -685,16 +685,10 @@ async def test_skip_forward(
     mock_config_entry: MockConfigEntry,
 ) -> None:
     """Test skipping forward by 10 seconds."""
-    # Arrange
     mock_spotify.return_value.get_playback.return_value.progress_ms = 50_000  # 50s
-    mock_spotify.return_value.get_playback.return_value.item.duration_ms = (
-        120_000  # 120s
-    )
+    mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
     await setup_integration(hass, mock_config_entry)
-    # 🌟 NEW LINE: Ensure all service registration and async setup is complete
     await hass.async_block_till_done()
-
-    # Act
     media_player = hass.states.get("media_player.spotify_spotify_1")
     assert media_player is not None
 
@@ -704,10 +698,28 @@ async def test_skip_forward(
         {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
         blocking=True,
     )
-
-    # Assert
-    # Expected seek call at 60s (50s + 10s)
     mock_spotify.return_value.seek_track.assert_called_with(60_000)
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_skip_forward_exceeding_duration(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test skipping forward when it would exceed the media duration."""
+    mock_spotify.return_value.get_playback.return_value.progress_ms = 115_000
+    mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
+    await setup_integration(hass, mock_config_entry)
+    await hass.async_block_till_done()
+
+    await hass.services.async_call(
+        "spotify",
+        SERVICE_MEDIA_SKIP_FORWARD,
+        {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
+        blocking=True,
+    )
+    mock_spotify.return_value.seek_track.assert_called_with(119_000)
 
 
 @pytest.mark.usefixtures("setup_credentials")
@@ -717,23 +729,38 @@ async def test_skip_backward(
     mock_config_entry: MockConfigEntry,
 ) -> None:
     """Test skipping backward by 10 seconds."""
-    # Arrange
     mock_spotify.return_value.get_playback.return_value.progress_ms = 8_000  # 8s
     mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
     await setup_integration(hass, mock_config_entry)
-    # 🌟 NEW LINE: Ensure all service registration and async setup is complete
     await hass.async_block_till_done()
 
-    # Act
     await hass.services.async_call(
         "spotify",
         SERVICE_MEDIA_SKIP_BACKWARD,
         {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
         blocking=True,
     )
+    mock_spotify.return_value.seek_track.assert_called_with(0)
 
-    # Assert
-    # Should clamp at 0 instead of negative
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_skip_backward_below_zero(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test skipping backward when it would go below 0."""
+    mock_spotify.return_value.get_playback.return_value.progress_ms = 5_000  # 5s
+    mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
+    await setup_integration(hass, mock_config_entry)
+    await hass.async_block_till_done()
+
+    await hass.services.async_call(
+        "spotify",
+        SERVICE_MEDIA_SKIP_BACKWARD,
+        {ATTR_ENTITY_ID: "media_player.spotify_spotify_1"},
+        blocking=True,
+    )
     mock_spotify.return_value.seek_track.assert_called_with(0)
 
 
