@@ -688,9 +688,6 @@ async def test_skip_forward(
     mock_spotify.return_value.get_playback.return_value.progress_ms = 50_000
     mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
     await setup_integration(hass, mock_config_entry)
-    await hass.async_block_till_done()
-    media_player = hass.states.get("media_player.spotify_spotify_1")
-    assert media_player is not None
 
     await hass.services.async_call(
         "spotify",
@@ -711,7 +708,6 @@ async def test_skip_forward_exceeding_duration(
     mock_spotify.return_value.get_playback.return_value.progress_ms = 115_000
     mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
     await setup_integration(hass, mock_config_entry)
-    await hass.async_block_till_done()
 
     await hass.services.async_call(
         "spotify",
@@ -729,10 +725,9 @@ async def test_skip_backward(
     mock_config_entry: MockConfigEntry,
 ) -> None:
     """Test skipping backward by 10 seconds."""
-    mock_spotify.return_value.get_playback.return_value.progress_ms = 8_000  # 8s
+    mock_spotify.return_value.get_playback.return_value.progress_ms = 8_000
     mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
     await setup_integration(hass, mock_config_entry)
-    await hass.async_block_till_done()
 
     await hass.services.async_call(
         "spotify",
@@ -750,10 +745,9 @@ async def test_skip_backward_below_zero(
     mock_config_entry: MockConfigEntry,
 ) -> None:
     """Test skipping backward when it would go below 0."""
-    mock_spotify.return_value.get_playback.return_value.progress_ms = 5_000  # 5s
+    mock_spotify.return_value.get_playback.return_value.progress_ms = 5_000
     mock_spotify.return_value.get_playback.return_value.item.duration_ms = 120_000
     await setup_integration(hass, mock_config_entry)
-    await hass.async_block_till_done()
 
     await hass.services.async_call(
         "spotify",

@@ -341,7 +341,7 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
             return
 
         new_position = min(self.media_position + 10, self.media_duration - 1)
-        await self.coordinator.client.seek_track(int(new_position * 1000))
+        await self.async_media_seek(new_position)
 
     @async_refresh_after
     async def async_media_skip_backward(self) -> None:
@@ -350,7 +350,7 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
             return
 
         new_position = max(self.media_position - 10, 0)
-        await self.coordinator.client.seek_track(int(new_position * 1000))
+        await self.async_media_seek(new_position)
 
     @async_refresh_after
     async def async_play_media(
