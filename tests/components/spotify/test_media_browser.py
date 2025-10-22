@@ -119,7 +119,7 @@ async def test_browse_media_playlists(
         ("album", "spotify:album:3IqzqH6ShrRtie9Yd2ODyG"),
         ("artist", "spotify:artist:0TnOYISbd1XYRBk9myaseg"),
         ("show", "spotify:show:1Y9ExMgMxoBVrgrfU7u0nD"),
-        # Lacks audiobook test here !
+        ("audiobook", "spotify:audiobook:4NEPUNXBX8kmmfyJRxR1EX"),
     ],
 )
 @pytest.mark.usefixtures("setup_credentials")
@@ -132,6 +132,8 @@ async def test_browsing(
     media_content_id: str,
 ) -> None:
     """Test browsing playlists for the two config entries."""
+    # You only need to adjust the fixture file (fixtures/audiobook.json) to add audiobook data, and put what's expected (so same as in fixture) in snapshot (test_media_browser.ambr)
+    # This code test needs to remains unchanged
     await setup_integration(hass, mock_config_entry)
 
     response = await async_browse_media(

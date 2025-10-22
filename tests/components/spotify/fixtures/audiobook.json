@@ -1,0 +1,3 @@
+{
+  "work_to_do_here": "Adjust here,\nthe mock will fetch fake data here\nwhen you will call it in tests Create something similar to other fixtures but for audiobook so that you can use it in tests/components/spotify/test_media_browser.pyand specify the same in snapshot (what's expected) test_media_browser.ambr"
+}

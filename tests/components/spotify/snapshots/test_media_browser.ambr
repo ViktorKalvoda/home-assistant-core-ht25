@@ -809,3 +809,41 @@
     'title': 'Safety Third',
   })
 # ---
+# name: test_browsing[audiobook-spotify:audiobook:4NEPUNXBX8kmmfyJRxR1EX]
+  dict({
+    'can_expand': True,
+    'can_play': True,
+    'can_search': False,
+    'children': list([
+      dict({
+        'can_expand': False,
+        'can_play': True,
+        'can_search': False,
+        'children_media_class': None,
+        'media_class': <MediaClass.TRACK: 'track'>,
+        'media_content_id': 'spotify://01j5tx5a0ff6g5v0qjx6hbc94t/spotify:track:3ssmxnilHYaKhwRWoBGMbU',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+        'media_content_type': 'spotify://track',
+        'thumbnail': 'https://i.scdn.co/image/ab6765630000ba8af44e9ef63c2d6fb44cb0c9bf',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+        'title': 'Chapter 1',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+      }),
+      dict({
+        'can_expand': False,
+        'can_play': True,
+        'can_search': False,
+        'children_media_class': None,
+        'media_class': <MediaClass.TRACK: 'track'>,
+        'media_content_id': 'spotify://01j5tx5a0ff6g5v0qjx6hbc94t/spotify:track:3ssmxnilHYaKhwRWoBGMbU',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+        'media_content_type': 'spotify://track',
+        'thumbnail': 'https://i.scdn.co/image/ab6765630000ba8af44e9ef63c2d6fb44cb0c9bf',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+        'title': 'Chapter 2',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+      }),
+    ]),
+    'children_media_class': <MediaClass.TRACK: 'track'>,
+    'media_class': <MediaClass.PLAYLIST: 'playlist'>,
+    'media_content_id': 'spotify://01j5tx5a0ff6g5v0qjx6hbc94t/spotify:audiobook:4NEPUNXBX8kmmfyJRxR1EX',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+    'media_content_type': 'spotify://audiobook',
+    'not_shown': 0,
+    'thumbnail': 'https://i.scdn.co/image/ab6765630000ba8ac7bedd27a4413b1abf926d8a',  // Adjust here corresponding to the value you put in fixtures/audiobook.json
+    'title': 'Safety Third', // Adjust here corresponding to the value you put in fixtures/audiobook.json
+  })
+# ---
