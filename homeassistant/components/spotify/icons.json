@@ -5,5 +5,13 @@
         "default": "mdi:spotify"
       }
     }
+  },
+  "services": {
+    "media_skip_forward": {
+      "service": "mdi:rewind-10"
+    },
+    "media_skip_backward": {
+      "service": "mdi:fast-forward-10"
+    }
   }
 }
