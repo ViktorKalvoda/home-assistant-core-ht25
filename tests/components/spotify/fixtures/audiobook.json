@@ -1,3 +1,31 @@
 {
-  "work_to_do_here": "Adjust here,\nthe mock will fetch fake data here\nwhen you will call it in tests Create something similar to other fixtures but for audiobook so that you can use it in tests/components/spotify/test_media_browser.pyand specify the same in snapshot (what's expected) test_media_browser.ambr"
+  "id": "4NEPUNXBX8kmmfyJRxR1EX",
+  "name": "Safety Third",
+  "type": "audiobook",
+  "uri": "spotify:audiobook:4NEPUNXBX8kmmfyJRxR1EX",
+  "images": [
+    {
+      "url": "https://i.scdn.co/image/ab6765630000ba8ac7bedd27a4413b1abf926d8a"
+    }
+  ],
+  "authors": [
+    {
+      "name": "William Osman"
+    }
+  ],
+  "chapters": {
+    "items": [
+      {
+        "id": "4NEPUNXBX8kmmfyJRxR1EX",
+        "name": "Chapter 1",
+        "type": "track",
+        "uri": "spotify:track:4NEPUNXBX8kmmfyJRxR1EX",
+        "images": [
+          {
+            "url": "https://i.scdn.co/image/4NEPUNXBX8kmmfyJRxR1EX7aO5QILySRJ7W4OuN0Bs9H"
+          }
+        ]
+      }
+    ]
+  }
 }
