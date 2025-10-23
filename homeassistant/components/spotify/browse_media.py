@@ -46,6 +46,7 @@ BROWSE_LIMIT = 48
 
 
 _LOGGER = logging.getLogger(__name__)
+unknown_type = "Unknown media type received: %s"
 
 
 class ItemPayload(TypedDict):
@@ -460,7 +461,7 @@ async def build_item_response(  # noqa: C901
     try:
         media_class = CONTENT_TYPE_MEDIA_CLASS[media_content_type]
     except KeyError:
-        _LOGGER.debug("Unknown media type received: %s", media_content_type)
+        _LOGGER.debug(unknown_type, media_content_type)
         return None
 
     if title is None:
@@ -506,7 +507,7 @@ def item_payload(item: ItemPayload, *, can_play_artist: bool) -> BrowseMedia:
     try:
         media_class = CONTENT_TYPE_MEDIA_CLASS[media_type]
     except KeyError as err:
-        _LOGGER.debug("Unknown media type received: %s", media_type)
+        _LOGGER.debug(unknown_type, media_type)
         raise UnknownMediaType from err
 
     can_expand = media_type not in [
@@ -599,7 +600,7 @@ def convert_to_browse_media(
     try:
         media_class = CONTENT_TYPE_MEDIA_CLASS[payload["type"]]["parent"]
     except KeyError as err:
-        _LOGGER.debug("Unknown media type received: %s", payload["type"])
+        _LOGGER.debug(unknown_type, payload["type"])
         raise UnknownMediaType(f"Unknown media type: {payload['type']}") from err
 
     can_play_artist = True

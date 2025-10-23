@@ -5,7 +5,7 @@ class SpotifySearchCard extends HTMLElement {
   }
 
   setConfig(config) {
-    if (!config || !config.entity) {
+    if (!config?.entity) {
       throw new Error("You must define an entity in the card configuration.");
     }
     this._build_card(config);
@@ -46,11 +46,11 @@ class SpotifySearchCard extends HTMLElement {
       </ha-card>
     `;
 
-    this.shadowRoot.querySelectorAll(".button-grid").forEach((button) => {
+    for (const button of this.shadowRoot.querySelectorAll(".button-grid")) {
       button.addEventListener("click", () => {
         this._call_spotify_search(button.dataset.searchType, config);
       });
-    });
+    }
   }
 
   _render_button(name, icon, searchType) {
@@ -67,7 +67,7 @@ class SpotifySearchCard extends HTMLElement {
       return;
     }
     try {
-      const response = await this._hass.callWS({
+      await this._hass.callWS({
         type: "call_service",
         domain: "media_player",
         service: "search_media",
@@ -87,8 +87,8 @@ class SpotifySearchCard extends HTMLElement {
 
   _open_results(entityId) {
     const path = `/media-browser/${entityId}/spotify%3A%2F%2Fsearch_results%2Csearch_results`;
-    window.history.pushState(null, "", path);
-    window.dispatchEvent(new Event("location-changed"));
+    globalThis.history.pushState(null, "", path);
+    globalThis.dispatchEvent(new Event("location-changed"));
   }
 
   getGridOptions() {
@@ -105,9 +105,8 @@ class SpotifySearchCard extends HTMLElement {
       schema: [{ name: "entity", required: true, selector: { entity: {} } }],
 
       computeHelper: (schema) => {
-        switch (schema.name) {
-          case "entity":
-            return "Select the Spotify entity you want to use.";
+        if (schema.name == "entity") {
+          return "Select the Spotify entity you want to use.";
         }
         return undefined;
       },
@@ -122,8 +121,8 @@ class SpotifySearchCard extends HTMLElement {
 
 customElements.define("spotify-search-card", SpotifySearchCard);
 
-window.customCards = window.customCards || [];
-window.customCards.push({
+globalThis.customCards = globalThis.customCards || [];
+globalThis.customCards.push({
   type: "spotify-search-card",
   name: "Spotify Search Card",
   description: "A card to search for media on Spotify.",
