@@ -27,7 +27,6 @@ SPOTIFY_SCOPES = [
 
 MEDIA_PLAYER_PREFIX = "spotify://"
 MEDIA_TYPE_SHOW = "show"
-MEDIA_TYPE_AUDIOBOOK = "audiobook"
 
 PLAYABLE_MEDIA_TYPES = [
     MediaType.PLAYLIST,
@@ -35,6 +34,5 @@ PLAYABLE_MEDIA_TYPES = [
     MediaType.ARTIST,
     MediaType.EPISODE,
     MEDIA_TYPE_SHOW,
-    MEDIA_TYPE_AUDIOBOOK,
     MediaType.TRACK,
 ]
