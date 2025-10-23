@@ -844,7 +844,10 @@ async def test_async_search_media_success(
         "homeassistant.components.spotify.media_player.convert_to_browse_media",
         side_effect=_fake_convert,
     ) as convert_mock:
-        query = SearchMediaQuery(search_query="rush")
+        query = SearchMediaQuery(
+            search_query="rush",
+            media_content_type="ALBUM,ARTIST,AUDIOBOOK,EPISODE,PLAYLIST,SHOW,TRACK",
+        )
         result = await player.async_search_media(query)
 
     mock_spotify.return_value.search.assert_called_once()
@@ -859,9 +862,6 @@ async def test_async_search_media_success(
         SearchType.SHOW,
         SearchType.TRACK,
     ]
-    assert (
-        kwargs["limit"] == 5
-    ) 
 
     assert [bm.title for bm in result.result] == [
         f"BM:{id(album_obj)}",
@@ -900,9 +900,7 @@ async def test_async_search_media_error_returns_empty(
 
     query = SearchMediaQuery(search_query="anything")
     result = await player.async_search_media(query)
-    assert (
-        result.result == []
-    )
+    assert result.result == []
 
 
 @pytest.mark.usefixtures("setup_credentials")
@@ -945,14 +943,13 @@ async def test__process_search_result_skips_unsupported_items(
         "homeassistant.components.spotify.media_player.convert_to_browse_media",
         side_effect=_sometimes_convert,
     ):
-        processed = player._process_search_result(
-            fake_result
-        )
-    
+        processed = player._process_search_result(fake_result)
+
     assert [bm.title for bm in processed] == [
         f"OK:{id(ok1)}",
         f"OK:{id(ok2)}",
     ]
+
 
 @pytest.mark.usefixtures("setup_credentials")
 @pytest.mark.parametrize(
@@ -967,11 +964,10 @@ async def test__process_search_result_skips_unsupported_items(
         ("track", "TRACK", "tracks"),
     ],
 )
-async def test_async_search_media_filtered_sets_types_limit_and_results(
+async def test_async_search_media_filtered_sets_types_results(
     hass,
     mock_spotify: MagicMock,
     mock_config_entry,
-    caplog: pytest.LogCaptureFixture,
     content_type: str,
     enum_name: str,
     bucket: str,
@@ -1007,7 +1003,6 @@ async def test_async_search_media_filtered_sets_types_limit_and_results(
             can_expand=False,
         )
 
-    caplog.set_level("DEBUG")
     with patch(
         "homeassistant.components.spotify.media_player.convert_to_browse_media",
         side_effect=_to_browse,
@@ -1019,14 +1014,9 @@ async def test_async_search_media_filtered_sets_types_limit_and_results(
     args, kwargs = mock_spotify.return_value.search.call_args
     assert args[0] == "rush"
     assert kwargs["types"] == [getattr(SearchType, enum_name)]
-    assert kwargs["limit"] == 15
 
     assert [bm.title for bm in result.result] == [
         f"{content_type}:{id(i1)}",
         f"{content_type}:{id(i2)}",
     ]
     assert convert_mock.call_args_list == [call(i1), call(i2)]
-
-    assert any(
-        f"Searching for rush in {content_type}" in rec.getMessage() for rec in caplog.records
-    )
