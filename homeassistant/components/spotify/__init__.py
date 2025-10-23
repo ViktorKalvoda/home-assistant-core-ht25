@@ -89,11 +89,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: SpotifyConfigEntry) -> b
     if not set(session.token["scope"].split(" ")).issuperset(SPOTIFY_SCOPES):
         raise ConfigEntryAuthFailed
 
-    current_dir_path = os.path.dirname(__file__)
-    static_dir_path = os.path.join(current_dir_path, "ui")
+    current_dir_path = os.path.dirname(__file__)  # Path to current directory
+    static_dir_path = os.path.join(current_dir_path, "ui")  # Path to 'ui' directory
 
     await hass.http.async_register_static_paths(
-        [
+        [  # Register static url for Spotify UI directory
             StaticPathConfig(
                 url_path="/spotify_ui",
                 path=static_dir_path,

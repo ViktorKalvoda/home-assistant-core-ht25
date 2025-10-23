@@ -135,7 +135,7 @@ def _get_show_item_payload(show: SimplifiedShow) -> ItemPayload:
     }
 
 
-def _get_simplified_artist_payload(item: SimplifiedArtist) -> ItemPayload:
+def _get_simplified_artist_item_payload(item: SimplifiedArtist) -> ItemPayload:
     return {
         "id": item.artist_id,
         "name": item.name,
@@ -145,13 +145,13 @@ def _get_simplified_artist_payload(item: SimplifiedArtist) -> ItemPayload:
     }
 
 
-def _get_browseMedia_item_payload(item: BrowseMedia) -> ItemPayload:
+def _get_browse_media_item_payload(item: BrowseMedia) -> ItemPayload:
     return {
         "id": item.media_content_id,
         "name": item.title,
         "type": item.media_content_type,
         "uri": item.media_content_id,
-        "thumbnail": None,  # SimplifiedArtist does not have images
+        "thumbnail": None,  # BrowseMedia does not have images
     }
 
 
@@ -419,9 +419,11 @@ async def build_item_response(  # noqa: C901
         if new_releases := await spotify.get_new_releases():
             items = [_get_album_item_payload(album) for album in new_releases]
     elif media_content_type == BrowsableMedia.SEARCH_RESULTS:
-        if search_results := hass.data.get("spotify_search_result"):
+        if search_results := hass.data.get(
+            "spotify_search_result"
+        ):  # Get search results and add them to the directory
             for result in search_results:
-                items.append(_get_browseMedia_item_payload(result))
+                items.append(_get_browse_media_item_payload(result))
     elif media_content_type == MediaType.PLAYLIST:
         if playlist := await spotify.get_playlist(media_content_id):
             title = playlist.name
@@ -568,7 +570,7 @@ def convert_to_browse_media(
 ) -> BrowseMedia:
     """Convert a Spotify item to a BrowseMedia object."""
     payload: ItemPayload
-    match item:
+    match item:  # Use adequate function to get payload based on item type
         case BasePlaylist():
             payload = _get_playlist_item_payload(item)
         case SimplifiedAlbum():
@@ -576,7 +578,7 @@ def convert_to_browse_media(
         case SimplifiedAudiobook():
             payload = _get_audiobook_item_payload(item)
         case SimplifiedArtist():
-            payload = _get_simplified_artist_payload(item)
+            payload = _get_simplified_artist_item_payload(item)
         case SimplifiedEpisode() | Episode():
             payload = _get_episode_item_payload(item)
         case SimplifiedTrack() | Track():
@@ -586,6 +588,7 @@ def convert_to_browse_media(
         case _:
             raise UnknownMediaType(f"Unsupported item type: {type(item)}")
 
+    # Match every payload variable to build a BrowseMedia object
     if artists := getattr(item, "artists", None):
         title = f"{artists[0].name} - {payload['name']}"
     else:

@@ -417,23 +417,31 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
             _LOGGER.debug(
                 "Searching for %s in %s", search_query, query.media_content_type
             )
-            limit = 15
+            limit = 15  # Default limit to avoid too many results
             media_types: list[SearchType]
             if query.media_content_type:
-                media_content_types = query.media_content_type.upper().split(",")
-                media_types = [
+                media_content_types = query.media_content_type.upper().split(
+                    ","
+                )  # Get the list of used filters
+                media_types = [  # list of converted filters for Spotifyaio
                     getattr(SearchType, media_type.strip())
                     for media_type in media_content_types
                 ]
                 if len(media_types) > 1:
-                    limit = 5
-            search_results = await self.coordinator.client.search(
-                search_query,
-                types=media_types,
-                limit=limit,
+                    limit = 5  # Reduce limit if multiple types are searched to avoid too many results
+            search_results = (
+                await self.coordinator.client.search(  # Perform search with Spotifyaio
+                    search_query,
+                    types=media_types,
+                    limit=limit,
+                )
             )
-            processed_results = self._process_search_result(search_results)
-            self.hass.data["spotify_search_result"] = processed_results
+            processed_results = self._process_search_result(
+                search_results
+            )  # Convert results to BrowseMedia format
+            self.hass.data["spotify_search_result"] = (
+                processed_results  # Store results for display
+            )
             return SearchMedia(result=processed_results)
 
         except Exception:
@@ -441,9 +449,11 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         return SearchMedia(result=[])
 
     def _process_search_result(self, search_result: Any) -> list[BrowseMedia]:
-        """Process a Sptofiaio SearchResult into a list of BrowseMedia."""
+        """Process a Spotifyaio SearchResult into a list of HomeAssistant BrowseMedia."""
         processed_items: list[BrowseMedia] = []
-        for item_list in (
+        for (
+            item_list
+        ) in (  # Iterate through all possible item lists in the search result
             search_result.albums,
             search_result.artists,
             search_result.audiobooks,
@@ -454,7 +464,9 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
         ):
             for item in item_list:
                 try:
-                    converted_item = convert_to_browse_media(item)
+                    converted_item = convert_to_browse_media(
+                        item
+                    )  # Convert item to BrowseMedia type
                     processed_items.append(converted_item)
                 except KeyError:
                     _LOGGER.debug("Unsupported item type: %s", type(item))

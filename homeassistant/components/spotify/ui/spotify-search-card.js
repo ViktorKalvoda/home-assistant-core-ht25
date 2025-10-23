@@ -16,6 +16,7 @@ class SpotifySearchCard extends HTMLElement {
   }
 
   _build_card(config) {
+    // Build the card's HTML structure
     this.shadowRoot.innerHTML = `
       <style>
         .card-content { padding: 16px; }
@@ -54,6 +55,7 @@ class SpotifySearchCard extends HTMLElement {
   }
 
   _render_button(name, icon, searchType) {
+    // Render individual search type button
     return `
       <button class="button-grid" data-search-type="${searchType}">
         <ha-icon icon="${icon}"></ha-icon><span>${name}</span>
@@ -61,6 +63,7 @@ class SpotifySearchCard extends HTMLElement {
   }
 
   async _call_spotify_search(searchType, config) {
+    // Call Spotify search function
     const query = this.shadowRoot.getElementById("query").value;
     if (!query) {
       alert("Empty query.");
@@ -86,6 +89,7 @@ class SpotifySearchCard extends HTMLElement {
   }
 
   _open_results(entityId) {
+    // Navigate to media browser's search results directory
     const path = `/media-browser/${entityId}/spotify%3A%2F%2Fsearch_results%2Csearch_results`;
     globalThis.history.pushState(null, "", path);
     globalThis.dispatchEvent(new Event("location-changed"));
@@ -101,6 +105,7 @@ class SpotifySearchCard extends HTMLElement {
   }
 
   static getConfigForm() {
+    // Allows the use of the visual card config editor
     return {
       schema: [{ name: "entity", required: true, selector: { entity: {} } }],
 
