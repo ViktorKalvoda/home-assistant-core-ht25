@@ -7,7 +7,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.media_player import BrowseError
 from homeassistant.components.spotify import DOMAIN
-from homeassistant.components.spotify.browse_media import async_browse_media
+from homeassistant.components.spotify.browse_media import UnknownMediaType, async_browse_media, convert_to_browse_media
 from homeassistant.const import CONF_ID
 from homeassistant.core import HomeAssistant
 
@@ -175,3 +175,13 @@ async def test_browsing_not_loaded_entry(
             "spotify://artist",
             f"spotify://{mock_config_entry.entry_id}/spotify:artist:0TnOYISbd1XYRBk9myaseg",
         )
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_convert_to_browse_media_unknown_item_type(
+    hass: HomeAssistant,
+    mock_spotify: MagicMock,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Test whether unsupported item type throws error when converting to browse media."""
+    with pytest.raises(UnknownMediaType, match="Unsupported item type"):
+        convert_to_browse_media(MagicMock())

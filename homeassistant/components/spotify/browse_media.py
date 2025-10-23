@@ -10,11 +10,18 @@ from spotifyaio import (
     Artist,
     BasePlaylist,
     SimplifiedAlbum,
+    SimplifiedArtist,
     SimplifiedTrack,
     SpotifyClient,
     Track,
 )
-from spotifyaio.models import Episode, ItemType, SimplifiedEpisode
+from spotifyaio.models import (
+    Episode,
+    ItemType,
+    SimplifiedAudiobook,
+    SimplifiedEpisode,
+    SimplifiedShow,
+)
 import yarl
 
 from homeassistant.components.media_player import (
@@ -26,13 +33,20 @@ from homeassistant.components.media_player import (
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, MEDIA_PLAYER_PREFIX, MEDIA_TYPE_SHOW, PLAYABLE_MEDIA_TYPES
+from .const import (
+    DOMAIN,
+    MEDIA_PLAYER_PREFIX,
+    MEDIA_TYPE_AUDIOBOOK,
+    MEDIA_TYPE_SHOW,
+    PLAYABLE_MEDIA_TYPES,
+)
 from .util import fetch_image_url
 
 BROWSE_LIMIT = 48
 
 
 _LOGGER = logging.getLogger(__name__)
+unknown_type = "Unknown media type received: %s"
 
 
 class ItemPayload(TypedDict):
@@ -101,6 +115,46 @@ def _get_episode_item_payload(episode: SimplifiedEpisode) -> ItemPayload:
     }
 
 
+def _get_audiobook_item_payload(audiobook: SimplifiedAudiobook) -> ItemPayload:
+    return {
+        "id": audiobook.audiobook_id,
+        "name": audiobook.name,
+        "type": MEDIA_TYPE_AUDIOBOOK,
+        "uri": audiobook.uri,
+        "thumbnail": fetch_image_url(audiobook.images),
+    }
+
+
+def _get_show_item_payload(show: SimplifiedShow) -> ItemPayload:
+    return {
+        "id": show.show_id,
+        "name": show.name,
+        "type": MEDIA_TYPE_SHOW,
+        "uri": show.uri,
+        "thumbnail": fetch_image_url(show.images),
+    }
+
+
+def _get_simplified_artist_item_payload(item: SimplifiedArtist) -> ItemPayload:
+    return {
+        "id": item.artist_id,
+        "name": item.name,
+        "type": MediaType.ARTIST,
+        "uri": item.uri,
+        "thumbnail": None,  # SimplifiedArtist does not have images
+    }
+
+
+def _get_browse_media_item_payload(item: BrowseMedia) -> ItemPayload:
+    return {
+        "id": item.media_content_id,
+        "name": item.title,
+        "type": item.media_content_type,
+        "uri": item.media_content_id,
+        "thumbnail": None,  # BrowseMedia does not have images
+    }
+
+
 class BrowsableMedia(StrEnum):
     """Enum of browsable media."""
 
@@ -113,6 +167,7 @@ class BrowsableMedia(StrEnum):
     CURRENT_USER_TOP_ARTISTS = "current_user_top_artists"
     CURRENT_USER_TOP_TRACKS = "current_user_top_tracks"
     NEW_RELEASES = "new_releases"
+    SEARCH_RESULTS = "search_results"
 
 
 LIBRARY_MAP = {
@@ -125,6 +180,7 @@ LIBRARY_MAP = {
     BrowsableMedia.CURRENT_USER_TOP_ARTISTS.value: "Top Artists",
     BrowsableMedia.CURRENT_USER_TOP_TRACKS.value: "Top Tracks",
     BrowsableMedia.NEW_RELEASES.value: "New Releases",
+    BrowsableMedia.SEARCH_RESULTS.value: "Search Results",
 }
 
 CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
@@ -164,6 +220,10 @@ CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
         "parent": MediaClass.DIRECTORY,
         "children": MediaClass.ALBUM,
     },
+    BrowsableMedia.SEARCH_RESULTS.value: {
+        "parent": MediaClass.DIRECTORY,
+        "children": MediaClass.DIRECTORY,
+    },
     MediaType.PLAYLIST: {
         "parent": MediaClass.PLAYLIST,
         "children": MediaClass.TRACK,
@@ -172,6 +232,10 @@ CONTENT_TYPE_MEDIA_CLASS: dict[str, Any] = {
     MediaType.ARTIST: {"parent": MediaClass.ARTIST, "children": MediaClass.ALBUM},
     MediaType.EPISODE: {"parent": MediaClass.EPISODE, "children": None},
     MEDIA_TYPE_SHOW: {"parent": MediaClass.PODCAST, "children": MediaClass.EPISODE},
+    MEDIA_TYPE_AUDIOBOOK: {
+        "parent": MediaClass.DIRECTORY,
+        "children": MediaClass.EPISODE,
+    },
     MediaType.TRACK: {"parent": MediaClass.TRACK, "children": None},
 }
 
@@ -282,6 +346,7 @@ async def async_browse_media_internal(
         "media_content_id": media_content_id,
     }
     response = await build_item_response(
+        hass,
         spotify,
         payload,
         can_play_artist=can_play_artist,
@@ -292,6 +357,7 @@ async def async_browse_media_internal(
 
 
 async def build_item_response(  # noqa: C901
+    hass: HomeAssistant,
     spotify: SpotifyClient,
     payload: dict[str, str | None],
     *,
@@ -352,6 +418,12 @@ async def build_item_response(  # noqa: C901
     elif media_content_type == BrowsableMedia.NEW_RELEASES:
         if new_releases := await spotify.get_new_releases():
             items = [_get_album_item_payload(album) for album in new_releases]
+    elif media_content_type == BrowsableMedia.SEARCH_RESULTS:
+        if search_results := hass.data.get(
+            "spotify_search_result"
+        ):  # Get search results and add them to the directory
+            for result in search_results:
+                items.append(_get_browse_media_item_payload(result))
     elif media_content_type == MediaType.PLAYLIST:
         if playlist := await spotify.get_playlist(media_content_id):
             title = playlist.name
@@ -391,7 +463,7 @@ async def build_item_response(  # noqa: C901
     try:
         media_class = CONTENT_TYPE_MEDIA_CLASS[media_content_type]
     except KeyError:
-        _LOGGER.debug("Unknown media type received: %s", media_content_type)
+        _LOGGER.debug(unknown_type, media_content_type)
         return None
 
     if title is None:
@@ -437,7 +509,7 @@ def item_payload(item: ItemPayload, *, can_play_artist: bool) -> BrowseMedia:
     try:
         media_class = CONTENT_TYPE_MEDIA_CLASS[media_type]
     except KeyError as err:
-        _LOGGER.debug("Unknown media type received: %s", media_type)
+        _LOGGER.debug(unknown_type, media_type)
         raise UnknownMediaType from err
 
     can_expand = media_type not in [
@@ -491,3 +563,60 @@ async def library_payload(*, can_play_artist: bool) -> BrowseMedia:
             )
         )
     return browse_media
+
+
+def convert_to_browse_media(
+    item: Any,
+) -> BrowseMedia:
+    """Convert a Spotify item to a BrowseMedia object."""
+    payload: ItemPayload
+    match item:  # Use adequate function to get payload based on item type
+        case BasePlaylist():
+            payload = _get_playlist_item_payload(item)
+        case SimplifiedAlbum():
+            payload = _get_album_item_payload(item)
+        case SimplifiedAudiobook():
+            payload = _get_audiobook_item_payload(item)
+        case SimplifiedArtist():
+            payload = _get_simplified_artist_item_payload(item)
+        case SimplifiedEpisode() | Episode():
+            payload = _get_episode_item_payload(item)
+        case SimplifiedTrack() | Track():
+            payload = _get_track_item_payload(item)
+        case SimplifiedShow():
+            payload = _get_show_item_payload(item)
+        case _:
+            raise UnknownMediaType(f"Unsupported item type: {type(item)}")
+
+    # Match every payload variable to build a BrowseMedia object
+    if artists := getattr(item, "artists", None):
+        title = f"{artists[0].name} - {payload['name']}"
+    else:
+        title = payload["name"]
+
+    can_expand = payload["type"] not in [
+        MediaType.TRACK,
+        MediaType.EPISODE,
+    ]
+
+    media_class: MediaClass
+    try:
+        media_class = CONTENT_TYPE_MEDIA_CLASS[payload["type"]]["parent"]
+    except KeyError as err:
+        _LOGGER.debug(unknown_type, payload["type"])
+        raise UnknownMediaType(f"Unknown media type: {payload['type']}") from err
+
+    can_play_artist = True
+    can_play = payload["type"] in PLAYABLE_MEDIA_TYPES and (
+        payload["type"] != MediaType.ARTIST or can_play_artist
+    )
+
+    return BrowseMedia(
+        media_class=media_class,
+        media_content_id=payload["uri"],
+        media_content_type=payload["type"],
+        title=title,
+        can_play=can_play,
+        can_expand=can_expand,
+        thumbnail=payload["thumbnail"],
+    )
