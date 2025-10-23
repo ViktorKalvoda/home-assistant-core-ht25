@@ -3,7 +3,7 @@
   "name": "Spotify",
   "codeowners": ["@frenck", "@joostlek"],
   "config_flow": true,
-  "dependencies": ["application_credentials"],
+  "dependencies": ["application_credentials", "http"],
   "documentation": "https://www.home-assistant.io/integrations/spotify",
   "integration_type": "service",
   "iot_class": "cloud_polling",

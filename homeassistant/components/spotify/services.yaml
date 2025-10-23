@@ -1,0 +1,12 @@
+media_skip_forward:
+  target:
+    entity:
+      integration: spotify
+      domain: media_player
+  fields: {}
+media_skip_backward:
+  target:
+    entity:
+      integration: spotify
+      domain: media_player
+  fields: {}

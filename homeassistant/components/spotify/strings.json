@@ -32,6 +32,16 @@
       "default": "Successfully authenticated with Spotify."
     }
   },
+  "services": {
+    "media_skip_forward": {
+      "name": "Skip forward",
+      "description": "Skip 10 seconds later."
+    },
+    "media_skip_backward": {
+      "name": "Skip backward",
+      "description": "Skip 10 seconds earlier."
+    }
+  },
   "system_health": {
     "info": {
       "api_endpoint_reachable": "Spotify API endpoint reachable"
