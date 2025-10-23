@@ -964,7 +964,7 @@ async def test__process_search_result_skips_unsupported_items(
         ("track", "TRACK", "tracks"),
     ],
 )
-async def test_async_search_media_filtered_sets_types_limit_and_results(
+async def test_async_search_media_filtered_sets_types_results(
     hass,
     mock_spotify: MagicMock,
     mock_config_entry,
