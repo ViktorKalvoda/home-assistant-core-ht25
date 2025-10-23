@@ -11,6 +11,17 @@
         'can_search': False,
         'children_media_class': <MediaClass.PLAYLIST: 'playlist'>,
         'media_class': <MediaClass.DIRECTORY: 'directory'>,
+        'media_content_id': 'spotify://01j5tx5a0ff6g5v0qjx6hbc94t/current_user_audiobooks',
+        'media_content_type': 'spotify://current_user_audiobooks',
+        'thumbnail': None,
+        'title': 'Audiobooks',
+      }),
+      dict({
+        'can_expand': True,
+        'can_play': False,
+        'can_search': False,
+        'children_media_class': <MediaClass.PLAYLIST: 'playlist'>,
+        'media_class': <MediaClass.DIRECTORY: 'directory'>,
         'media_content_id': 'spotify://01j5tx5a0ff6g5v0qjx6hbc94t/current_user_playlists',
         'media_content_type': 'spotify://current_user_playlists',
         'thumbnail': None,
@@ -239,6 +250,22 @@
     'title': 'Spotify',
   })
 # ---
+# name: test_browse_user_saved_audiobooks_empty
+  dict({
+    'can_expand': True,
+    'can_play': False,
+    'can_search': False,
+    'children': list([
+    ]),
+    'children_media_class': <MediaClass.PLAYLIST: 'playlist'>,
+    'media_class': <MediaClass.DIRECTORY: 'directory'>,
+    'media_content_id': 'spotify://01j5tx5a0ff6g5v0qjx6hbc94t/current_user_audiobooks',
+    'media_content_type': 'spotify://current_user_audiobooks',
+    'not_shown': 0,
+    'thumbnail': None,
+    'title': 'Audiobooks',
+  })
+# ---
 # name: test_browsing[album-spotify:album:3IqzqH6ShrRtie9Yd2ODyG]
   dict({
     'can_expand': True,
@@ -313,6 +340,22 @@
     'not_shown': 0,
     'thumbnail': 'https://i.scdn.co/image/ab6761610000e5ebee07b5820dd91d15d397e29c',
     'title': 'Pitbull',
+  })
+# ---
+# name: test_browsing[current_user_audiobooks-current_user_audiobooks]
+  dict({
+    'can_expand': True,
+    'can_play': False,
+    'can_search': False,
+    'children': list([
+    ]),
+    'children_media_class': <MediaClass.PLAYLIST: 'playlist'>,
+    'media_class': <MediaClass.DIRECTORY: 'directory'>,
+    'media_content_id': 'spotify://01j5tx5a0ff6g5v0qjx6hbc94t/current_user_audiobooks',
+    'media_content_type': 'spotify://current_user_audiobooks',
+    'not_shown': 0,
+    'thumbnail': None,
+    'title': 'Audiobooks',
   })
 # ---
 # name: test_browsing[current_user_followed_artists-current_user_followed_artists]
