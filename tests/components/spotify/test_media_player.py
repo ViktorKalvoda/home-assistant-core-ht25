@@ -1,7 +1,8 @@
 """Tests for the Spotify media player platform."""
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+import types
+from unittest.mock import MagicMock, call, patch
 
 from freezegun.api import FrozenDateTimeFactory
 import pytest
@@ -12,6 +13,7 @@ from spotifyaio import (
     SpotifyConnectionError,
     SpotifyNotFoundError,
 )
+from spotifyaio.models import SearchType
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.media_player import (
@@ -27,16 +29,20 @@ from homeassistant.components.media_player import (
     DOMAIN as MEDIA_PLAYER_DOMAIN,
     SERVICE_PLAY_MEDIA,
     SERVICE_SELECT_SOURCE,
+    BrowseMedia,
+    MediaClass,
     MediaPlayerEnqueue,
     MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
     RepeatMode,
+    SearchMediaQuery,
 )
 from homeassistant.components.spotify import DOMAIN
 from homeassistant.components.spotify.media_player import (
     SERVICE_MEDIA_SKIP_BACKWARD,
     SERVICE_MEDIA_SKIP_FORWARD,
+    SpotifyMediaPlayer
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -873,3 +879,228 @@ async def test_smart_polling_interval_handles_paused(
 
     mock_spotify.return_value.get_playback.assert_called_once()
     mock_spotify.return_value.get_playback.reset_mock()
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_async_search_media_success(
+    hass,
+    mock_spotify: MagicMock,
+    mock_config_entry,
+) -> None:
+    """Test whether search returns results as BrowseMedia and calls spotify Client correctly."""
+    await setup_integration(hass, mock_config_entry)
+    player = SpotifyMediaPlayer(
+        mock_config_entry.runtime_data.coordinator,
+        mock_config_entry.runtime_data.devices,
+    )
+    player.hass = hass
+
+    album_obj = object()
+    artist_obj = object()
+    audiobook_obj = object()
+    episode_obj = object()
+    playlist_obj = object()
+    show_obj = object()
+    track_obj = object()
+    fake_result = types.SimpleNamespace(
+        albums=[album_obj],
+        artists=[artist_obj],
+        audiobooks=[audiobook_obj],
+        episodes=[episode_obj],
+        playlists=[playlist_obj],
+        shows=[show_obj],
+        tracks=[track_obj],
+    )
+
+    mock_spotify.return_value.search.return_value = fake_result
+
+    def _fake_convert(item):
+        return BrowseMedia(
+            title=f"BM:{id(item)}",
+            media_class=MediaClass.DIRECTORY,
+            media_content_id="uri",
+            media_content_type="type",
+            can_play=False,
+            can_expand=False,
+        )
+
+    with patch(
+        "homeassistant.components.spotify.media_player.convert_to_browse_media",
+        side_effect=_fake_convert,
+    ) as convert_mock:
+        query = SearchMediaQuery(
+            search_query="rush",
+            media_content_type="ALBUM,ARTIST,AUDIOBOOK,EPISODE,PLAYLIST,SHOW,TRACK",
+        )
+        result = await player.async_search_media(query)
+
+    mock_spotify.return_value.search.assert_called_once()
+    args, kwargs = mock_spotify.return_value.search.call_args
+    assert args[0] == "rush"
+    assert kwargs["types"] == [
+        SearchType.ALBUM,
+        SearchType.ARTIST,
+        SearchType.AUDIOBOOK,
+        SearchType.EPISODE,
+        SearchType.PLAYLIST,
+        SearchType.SHOW,
+        SearchType.TRACK,
+    ]
+
+    assert [bm.title for bm in result.result] == [
+        f"BM:{id(album_obj)}",
+        f"BM:{id(artist_obj)}",
+        f"BM:{id(audiobook_obj)}",
+        f"BM:{id(episode_obj)}",
+        f"BM:{id(playlist_obj)}",
+        f"BM:{id(show_obj)}",
+        f"BM:{id(track_obj)}",
+    ]
+    assert convert_mock.call_args_list == [
+        call(album_obj),
+        call(artist_obj),
+        call(audiobook_obj),
+        call(episode_obj),
+        call(playlist_obj),
+        call(show_obj),
+        call(track_obj),
+    ]
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test_async_search_media_error_returns_empty(
+    hass,
+    mock_spotify: MagicMock,
+    mock_config_entry,
+) -> None:
+    """Test robustness of search media method."""
+    await setup_integration(hass, mock_config_entry)
+    player = SpotifyMediaPlayer(
+        mock_config_entry.runtime_data.coordinator,
+        mock_config_entry.runtime_data.devices,
+    )
+
+    mock_spotify.return_value.search.side_effect = RuntimeError("boom")
+
+    query = SearchMediaQuery(search_query="anything")
+    result = await player.async_search_media(query)
+    assert result.result == []
+
+
+@pytest.mark.usefixtures("setup_credentials")
+async def test__process_search_result_skips_unsupported_items(
+    hass,
+    mock_spotify: MagicMock,
+    mock_config_entry,
+) -> None:
+    """Test whether search skips unsupported items and keeps order of supported ones."""
+    await setup_integration(hass, mock_config_entry)
+    player = SpotifyMediaPlayer(
+        mock_config_entry.runtime_data.coordinator,
+        mock_config_entry.runtime_data.devices,
+    )
+
+    ok1, bad, ok2 = object(), object(), object()
+    fake_result = types.SimpleNamespace(
+        albums=[ok1],
+        artists=[bad],
+        audiobooks=[],
+        episodes=[],
+        playlists=[ok2],
+        shows=[],
+        tracks=[],
+    )
+
+    def _sometimes_convert(item):
+        if item is bad:
+            raise KeyError("unsupported")
+        return BrowseMedia(
+            title=f"OK:{id(item)}",
+            media_class=MediaClass.DIRECTORY,
+            media_content_id="uri",
+            media_content_type="type",
+            can_play=False,
+            can_expand=False,
+        )
+
+    with patch(
+        "homeassistant.components.spotify.media_player.convert_to_browse_media",
+        side_effect=_sometimes_convert,
+    ):
+        processed = player._process_search_result(fake_result)
+
+    assert [bm.title for bm in processed] == [
+        f"OK:{id(ok1)}",
+        f"OK:{id(ok2)}",
+    ]
+
+
+@pytest.mark.usefixtures("setup_credentials")
+@pytest.mark.parametrize(
+    "content_type, enum_name, bucket",
+    [
+        ("album", "ALBUM", "albums"),
+        ("artist", "ARTIST", "artists"),
+        ("audiobook", "AUDIOBOOK", "audiobooks"),
+        ("episode", "EPISODE", "episodes"),
+        ("playlist", "PLAYLIST", "playlists"),
+        ("show", "SHOW", "shows"),
+        ("track", "TRACK", "tracks"),
+    ],
+)
+async def test_async_search_media_filtered_sets_types_results(
+    hass,
+    mock_spotify: MagicMock,
+    mock_config_entry,
+    content_type: str,
+    enum_name: str,
+    bucket: str,
+) -> None:
+    """Test filtering capability of search and correct results."""
+    await setup_integration(hass, mock_config_entry)
+    player = SpotifyMediaPlayer(
+        mock_config_entry.runtime_data.coordinator,
+        mock_config_entry.runtime_data.devices,
+    )
+    player.hass = hass
+
+    i1, i2 = object(), object()
+    fake_result = types.SimpleNamespace(
+        albums=[],
+        artists=[],
+        audiobooks=[],
+        episodes=[],
+        playlists=[],
+        shows=[],
+        tracks=[],
+    )
+    getattr(fake_result, bucket).extend([i1, i2])
+    mock_spotify.return_value.search.return_value = fake_result
+
+    def _to_browse(item):
+        return BrowseMedia(
+            title=f"{content_type}:{id(item)}",
+            media_class=MediaClass.DIRECTORY,
+            media_content_id="uri",
+            media_content_type="type",
+            can_play=False,
+            can_expand=False,
+        )
+
+    with patch(
+        "homeassistant.components.spotify.media_player.convert_to_browse_media",
+        side_effect=_to_browse,
+    ) as convert_mock:
+        query = SearchMediaQuery(search_query="rush", media_content_type=content_type)
+        result = await player.async_search_media(query)
+
+    mock_spotify.return_value.search.assert_called_once()
+    args, kwargs = mock_spotify.return_value.search.call_args
+    assert args[0] == "rush"
+    assert kwargs["types"] == [getattr(SearchType, enum_name)]
+
+    assert [bm.title for bm in result.result] == [
+        f"{content_type}:{id(i1)}",
+        f"{content_type}:{id(i2)}",
+    ]
+    assert convert_mock.call_args_list == [call(i1), call(i2)]
