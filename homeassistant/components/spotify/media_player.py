@@ -34,7 +34,10 @@ from homeassistant.components.media_player import (
     SearchMediaQuery,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddConfigEntryEntitiesCallback,
+    async_get_current_platform,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .browse_media import async_browse_media_internal, convert_to_browse_media
@@ -70,6 +73,9 @@ REPEAT_MODE_MAPPING_TO_SPOTIFY = {
 }
 AFTER_REQUEST_SLEEP = 1
 
+SERVICE_MEDIA_SKIP_FORWARD = "media_skip_forward"
+SERVICE_MEDIA_SKIP_BACKWARD = "media_skip_backward"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -79,11 +85,27 @@ async def async_setup_entry(
     """Set up Spotify based on a config entry."""
     data = entry.runtime_data
     assert entry.unique_id is not None
+
     spotify = SpotifyMediaPlayer(
         data.coordinator,
         data.devices,
     )
     async_add_entities([spotify])
+
+    # Register custom skip services
+    platform = async_get_current_platform()
+
+    platform.async_register_entity_service(
+        "media_skip_forward",
+        {},  # no extra parameters
+        "async_media_skip_forward",
+    )
+
+    platform.async_register_entity_service(
+        "media_skip_backward",
+        {},
+        "async_media_skip_backward",
+    )
 
 
 def ensure_item[_R](
@@ -315,6 +337,24 @@ class SpotifyMediaPlayer(SpotifyEntity, MediaPlayerEntity):
     async def async_media_seek(self, position: float) -> None:
         """Send seek command."""
         await self.coordinator.client.seek_track(int(position * 1000))
+
+    @async_refresh_after
+    async def async_media_skip_forward(self) -> None:
+        """Skip forward 10 seconds."""
+        if self.media_position is None or self.media_duration is None:
+            return
+
+        new_position = min(self.media_position + 10, self.media_duration - 1)
+        await self.async_media_seek(new_position)
+
+    @async_refresh_after
+    async def async_media_skip_backward(self) -> None:
+        """Skip backward 10 seconds."""
+        if self.media_position is None:
+            return
+
+        new_position = max(self.media_position - 10, 0)
+        await self.async_media_seek(new_position)
 
     @async_refresh_after
     async def async_play_media(
